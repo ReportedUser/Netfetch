@@ -1,3 +1,4 @@
+#include <curl/easy.h>
 #include <stdio.h>
 #include <curl/curl.h>
 #include <logos.h>
@@ -17,8 +18,28 @@ struct server_to_read {
 
 };
 
-void fetch_information(struct server_to_read* directions) {
+intfetch_information(char URL){
+    CURL *curl;
+    CURLcode res;
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    curl = curl_easy_init();
+    if(curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, URL);
+
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() returned %s\n", curl_easy_strerror(res));
+        }
+
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+
+    return 0;
 }
+
 
 
 int main(void) {
