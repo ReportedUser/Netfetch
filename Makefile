@@ -1,1 +1,1 @@
-gcc -o test.o curl_test.c -lcurl
+gcc -o netfetch src/netfetch.c -lcurl -I./include/
