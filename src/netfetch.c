@@ -4,7 +4,6 @@
 #include <string.h>
 #include <curl/curl.h>
 #include <logos.h>
-#include <errno.h>
 #include <limits.h>
 #include <cJSON.h>
 
@@ -15,9 +14,9 @@
 
 struct ServiceConfig {
 	char service[50];
-	char host[50];
-	char port[6];
-	char key[100];
+	char link[200];
+	char value_1[20];
+	char value_2[20];
 };
 
 
@@ -26,48 +25,18 @@ struct MemoryStruct {
 	size_t size;
 };
 
-typedef struct HashNode {
-	char *key;
-	char *value;
-	struct HashNode *next;
-} HashNode;
-
-
-struct HasTable {
-	HashNode **table;
-};
-
-
-int parse_port(const char *port_value) {
-	char *endptr;
-	errno = 0;
-	long port = strtol(port_value, &endptr, 10);
-
-	if (endptr == port_value || *endptr != '\0') {
-		printf("Invalid port: %s\n", port_value);
-		return -1;
-	}
-	if ((errno == ERANGE && (port == LONG_MAX || port == LONG_MIN)) || port < 1 || port > 65535) {
-		printf("Port out of range: %ld\n", port);
-		return -1;
-	}
-	return 0;
-}
-
 
 int organize_service_data(char line[256], struct ServiceConfig *current_service) {
 	char key[128], value[128];
 
         if (sscanf(line, "%[^=]=%s", key, value) == 2) {
-        if (strcmp(key, "host") == 0) {
-                strncpy(current_service->host, value, sizeof(current_service->host)-1);
-        } else if (strcmp(key, "port") == 0) {
-		char RC = parse_port(value);
-		if (RC == 0) {strncpy(current_service->port, value, sizeof(current_service->port)-1);}
-		else return -1;
-        } else if (strcmp(key, "session_key") == 0) {
-                strncpy(current_service->key, value, sizeof(current_service->key));
-	}
+        if (strcmp(key, "link") == 0) {
+                strncpy(current_service->link, value, sizeof(current_service->link)-1);
+        } else if (strcmp(key, "value_1") == 0) {
+                strncpy(current_service->value_1, value, sizeof(current_service->value_1)-1);
+        } else if (strcmp(key, "value_2") == 0) {
+                strncpy(current_service->value_2, value, sizeof(current_service->value_2)-1);
+        }
 	}
 	return 0;
 };
@@ -88,7 +57,6 @@ int parse_config(struct ServiceConfig *current_service, const char *filename) {
 			sscanf(line, "[%[^]]", current_service->service);
 		}
 		RC = organize_service_data(line, current_service);
-		if (RC == -1) return RC;
 	}
 	fclose(file);
 	return 0;
@@ -111,7 +79,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 	return realsize;
 }
 
-char *fetch_information(char URL[200], struct MemoryStruct *chunk){
+int fetch_information(char URL[200], struct MemoryStruct *chunk){
 	CURL *curl;
 	CURLcode res;
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -126,58 +94,64 @@ char *fetch_information(char URL[200], struct MemoryStruct *chunk){
 		// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		res = curl_easy_perform(curl);
         if(res != CURLE_OK) {
-		fprintf(stderr, "curl_easy_perform() returned %s\n", curl_easy_strerror(res));
+		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
+		return -1;
         } else {
 		//printf("This information was retrieved: %s \n", (char *)chunk->memory);
 	}
         curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
-	return NULL;
+	return 1;
 }
 
 
-cJSON *json_parsing(char *data) {
+cJSON *json_parsing(char *data, int PRINT_FLAG) {
 	if (data==NULL) {
 		return NULL;
 	}
 	cJSON *json = cJSON_Parse(data);
+	if (json == NULL){
+		fprintf(stderr, RED"No json data to parse, returning.\n"RESET);
+		return NULL;
+	} else if (PRINT_FLAG == 1){ 
+		char *json_string = cJSON_Print(json);
+		printf("This information was retrieved: %s \n", json_string);
+		free(json_string);
+	}
+
+	cJSON_Delete(json);
 
 	return json;
 }
 
 
+int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
+	printf(pihole_logo, service_to_print->service, service_to_print->value_1, service_to_print->value_2, "", "");
+	return 0;
+}
+
+
 int main(void) {
-	int RC;
-	char buffer[200];
-	struct ServiceConfig *service_to_fetch = malloc(sizeof(struct ServiceConfig));
+	int RC = 0;
+	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	struct MemoryStruct chunk;
 	
 	chunk.memory = malloc(1);
 	chunk.size = 0;
 
-	if (service_to_fetch == NULL) {
-		perror(RED"Falied to allocate memory to server_to_fetch."RESET);
-		return -1;
-	}
-	RC = parse_config(service_to_fetch, "config.txt");
-	if (RC == -1) {return -1;}
-	// Testing with Pi-hole
-	snprintf(buffer, sizeof(buffer), "http://%s/admin/api.php?summaryRaw&auth=%s", service_to_fetch->host, service_to_fetch->key);
-	//puts(buffer);
+	RC = parse_config(service, "config.txt");
+	if (RC == -1) return RC;
 	
-	fetch_information(buffer, &chunk);
-	cJSON *parsed_json = json_parsing(chunk.memory);
-	if (parsed_json == NULL){
-		printf("No json data to parse, returning.");
-	} else { 
-		char *json_string = cJSON_Print(parsed_json);
-		printf("This information was retrieved: %s \n", json_string);
-		free(json_string);
-	}
+	RC = fetch_information(service->link, &chunk);
+	if (RC == -1) return RC;
 
-	cJSON_Delete(parsed_json);
-	free(service_to_fetch);
-	service_to_fetch = NULL;
-	return 0;
-};
+	cJSON *parsed_json = json_parsing(chunk.memory, 0);
+	if (parsed_json == NULL) return -1;
+
+	service_print(service, parsed_json);
+
+	free(service);
+	service= NULL;
+	return RC;
+}
