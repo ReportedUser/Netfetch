@@ -1,1 +1,1 @@
-gcc -o netfetch src/netfetch.c -lcurl -I./include/
+gcc -o netfetch src/netfetch.c lib/cJSON.c -lcurl -I./include/ 

@@ -6,6 +6,7 @@
 #include <logos.h>
 #include <errno.h>
 #include <limits.h>
+#include <cJSON.h>
 
 
 #define RED "\033[1;31m"
@@ -110,26 +111,24 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 	return realsize;
 }
 
-char *fetch_information(char URL[200]){
+char *fetch_information(char URL[200], struct MemoryStruct *chunk){
 	CURL *curl;
 	CURLcode res;
 	curl_global_init(CURL_GLOBAL_ALL);
-	struct MemoryStruct chunk;
+	// struct MemoryStruct chunk;
 
-	chunk.memory = malloc(1);
-	chunk.size = 0;
 
 	curl = curl_easy_init();
 	if(curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, URL);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
 		// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		res = curl_easy_perform(curl);
         if(res != CURLE_OK) {
 		fprintf(stderr, "curl_easy_perform() returned %s\n", curl_easy_strerror(res));
         } else {
-		printf("This information was retrieved: %s \n", (char *)chunk.memory);
+		//printf("This information was retrieved: %s \n", (char *)chunk->memory);
 	}
         curl_easy_cleanup(curl);
 	}
@@ -138,9 +137,13 @@ char *fetch_information(char URL[200]){
 }
 
 
-char *json_parsing(char *data) {
+cJSON *json_parsing(char *data) {
+	if (data==NULL) {
+		return NULL;
+	}
+	cJSON *json = cJSON_Parse(data);
 
-	if (data==NULL) return NULL;
+	return json;
 }
 
 
@@ -148,6 +151,10 @@ int main(void) {
 	int RC;
 	char buffer[200];
 	struct ServiceConfig *service_to_fetch = malloc(sizeof(struct ServiceConfig));
+	struct MemoryStruct chunk;
+	
+	chunk.memory = malloc(1);
+	chunk.size = 0;
 
 	if (service_to_fetch == NULL) {
 		perror(RED"Falied to allocate memory to server_to_fetch."RESET);
@@ -157,10 +164,19 @@ int main(void) {
 	if (RC == -1) {return -1;}
 	// Testing with Pi-hole
 	snprintf(buffer, sizeof(buffer), "http://%s/admin/api.php?summaryRaw&auth=%s", service_to_fetch->host, service_to_fetch->key);
-	puts(buffer);
-	fetch_information(buffer);
-	printf("\n");
+	//puts(buffer);
+	
+	fetch_information(buffer, &chunk);
+	cJSON *parsed_json = json_parsing(chunk.memory);
+	if (parsed_json == NULL){
+		printf("No json data to parse, returning.");
+	} else { 
+		char *json_string = cJSON_Print(parsed_json);
+		printf("This information was retrieved: %s \n", json_string);
+		free(json_string);
+	}
 
+	cJSON_Delete(parsed_json);
 	free(service_to_fetch);
 	service_to_fetch = NULL;
 	return 0;
