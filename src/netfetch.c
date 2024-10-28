@@ -10,7 +10,19 @@
 
 #define RED "\033[1;31m"
 #define RESET "\033[0m"
-#define TABLE_SIZE 20 
+#define SIZE 30 
+
+
+#define Type(x) _Generic((x),                   \
+                         int: "int",            \
+                         short: "short",        \
+                         long: "long",          \
+                         char: "char",          \
+                         float: "float",        \
+                         double: "double",      \
+                         default: "unknown"     \
+                         )
+
 
 struct ServiceConfig {
 	char service[50];
@@ -120,14 +132,21 @@ cJSON *json_parsing(char *data, int PRINT_FLAG) {
 		free(json_string);
 	}
 
-	cJSON_Delete(json);
-
 	return json;
 }
 
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
-	printf(pihole_logo, service_to_print->service, service_to_print->value_1, service_to_print->value_2, "", "");
+	
+	char value_1_concated[SIZE];
+	char value_2_concated[SIZE];
+	cJSON *value_1 = cJSON_GetObjectItem(json_to_print, service_to_print->value_1);
+	cJSON *value_2 = cJSON_GetObjectItem(json_to_print, service_to_print->value_2);
+
+	snprintf(value_1_concated, SIZE, "%s %d", service_to_print->value_1, value_1->valueint);
+	snprintf(value_2_concated, SIZE, "%s %d", service_to_print->value_2, value_2->valueint);
+
+	printf(pihole_logo, service_to_print->service, value_1_concated, value_2_concated, "", "");
 	return 0;
 }
 
