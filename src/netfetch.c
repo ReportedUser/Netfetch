@@ -9,6 +9,7 @@
 
 
 #define RED "\033[1;31m"
+#define GREEN "\033[1;32m"
 #define RESET "\033[0m"
 #define SIZE 30 
 
@@ -27,8 +28,12 @@
 struct ServiceConfig {
 	char service[50];
 	char link[200];
-	char value_1[20];
-	char value_2[20];
+	char value_1[SIZE];
+	char value_2[SIZE];
+	char value_3[SIZE];
+	char value_4[SIZE];
+	char value_5[SIZE];
+	char value_6[SIZE];
 };
 
 
@@ -48,10 +53,19 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
                 strncpy(current_service->value_1, value, sizeof(current_service->value_1)-1);
         } else if (strcmp(key, "value_2") == 0) {
                 strncpy(current_service->value_2, value, sizeof(current_service->value_2)-1);
-        }
+        } else if (strcmp(key, "value_3") == 0) {
+                strncpy(current_service->value_3, value, sizeof(current_service->value_3)-1);
+        } else if (strcmp(key, "value_4") == 0) {
+                strncpy(current_service->value_4, value, sizeof(current_service->value_4)-1);
+	} else if (strcmp(key, "value_5") == 0) {
+                strncpy(current_service->value_5, value, sizeof(current_service->value_5)-1);
+	} else if (strcmp(key, "value_6") == 0) {
+                strncpy(current_service->value_6, value, sizeof(current_service->value_6)-1);
+	}
+
 	}
 	return 0;
-};
+}
 
 
 int parse_config(struct ServiceConfig *current_service, const char *filename) {
@@ -137,16 +151,28 @@ cJSON *json_parsing(char *data, int PRINT_FLAG) {
 
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
+
+	char concatenated_values[6][SIZE];
+	char *values_list[6] = {
+		service_to_print->value_1,
+		service_to_print->value_2,
+		service_to_print->value_3,
+		service_to_print->value_4,
+		service_to_print->value_5,
+		service_to_print->value_6,
+	};
+
+	for (int i = 0; i<5; i++) {
+		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
+		if (value != NULL && cJSON_IsString(value)) {
+		snprintf(concatenated_values[i], SIZE, "%s: %s", values_list[i], value->valuestring);
+		} else if (value != NULL && cJSON_IsNumber(value)) {
+		snprintf(concatenated_values[i], SIZE, "%s: %d", values_list[i], value->valueint);
+		}
+	}
 	
-	char value_1_concated[SIZE];
-	char value_2_concated[SIZE];
-	cJSON *value_1 = cJSON_GetObjectItem(json_to_print, service_to_print->value_1);
-	cJSON *value_2 = cJSON_GetObjectItem(json_to_print, service_to_print->value_2);
-
-	snprintf(value_1_concated, SIZE, "%s %d", service_to_print->value_1, value_1->valueint);
-	snprintf(value_2_concated, SIZE, "%s %d", service_to_print->value_2, value_2->valueint);
-
-	printf(pihole_logo, service_to_print->service, value_1_concated, value_2_concated, "", "");
+	printf(pihole_logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
+	concatenated_values[4], concatenated_values[5]);
 	return 0;
 }
 

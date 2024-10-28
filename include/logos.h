@@ -9,13 +9,13 @@
 
 const char* pihole_logo =
 GREEN " :+++=-:.			\n"	
-GREEN "  ++++++++-.			\t" RESET" %s	\n"
+GREEN "  ++++++++-.			\t" RESET" [%s]	\n"
 GREEN "  :+++===+++-     .:-===		" RESET" %s	\n"
 GREEN "   :++++===++=  .=+++++-		" RESET" %s 	\n"
-GREEN "     :=+++=--+:.+++++=:		" RESET" %s 	\n"
-GREEN "       .:-==. -=+=-:.		" RESET" %s 	\n"
-RED "            :.:::.			\t \n"
-RED "         .:--------:.		\t \n"
+GREEN "     :=+++=--+:.+++++=:		\t" RESET" %s 	\n"
+GREEN "       .:-==. -=+=-:.		\t" RESET" %s 	\n"
+RED "            :.:::.			\t" RESET" %s   \n"
+RED "         .:--------:.		\t" RESET" %s   \n"
 RED "       .:------------:.		\t \n"
 RED "     .:--------------:::.		\n"
 RED "   .:::::-::-------:::::::.	\n"
