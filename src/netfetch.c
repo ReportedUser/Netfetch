@@ -14,17 +14,6 @@
 #define SIZE 30 
 
 
-#define Type(x) _Generic((x),                   \
-                         int: "int",            \
-                         short: "short",        \
-                         long: "long",          \
-                         char: "char",          \
-                         float: "float",        \
-                         double: "double",      \
-                         default: "unknown"     \
-                         )
-
-
 struct ServiceConfig {
 	char service[50];
 	char link[200];
@@ -42,6 +31,11 @@ struct MemoryStruct {
 	size_t size;
 };
 
+
+typedef struct {
+	const char* name;
+	const char* logo;
+} Logo;
 
 int organize_service_data(char line[256], struct ServiceConfig *current_service) {
 	char key[128], value[128];
@@ -62,14 +56,12 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
 	} else if (strcmp(key, "value_6") == 0) {
                 strncpy(current_service->value_6, value, sizeof(current_service->value_6)-1);
 	}
-
 	}
 	return 0;
 }
 
 
 int parse_config(struct ServiceConfig *current_service, const char *filename) {
-
 	int c, RC;
 	char line[256];
 	FILE *file = fopen(filename, "r");
@@ -88,6 +80,7 @@ int parse_config(struct ServiceConfig *current_service, const char *filename) {
 	return 0;
 };
 
+
 size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userdata) {
 	struct MemoryStruct *currentdata = (struct MemoryStruct*) userdata;
 	size_t realsize = size * nmemb;
@@ -105,12 +98,11 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 	return realsize;
 }
 
+
 int fetch_information(char URL[200], struct MemoryStruct *chunk){
 	CURL *curl;
 	CURLcode res;
 	curl_global_init(CURL_GLOBAL_ALL);
-	// struct MemoryStruct chunk;
-
 
 	curl = curl_easy_init();
 	if(curl) {
@@ -122,9 +114,7 @@ int fetch_information(char URL[200], struct MemoryStruct *chunk){
         if(res != CURLE_OK) {
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
 		return -1;
-        } else {
-		//printf("This information was retrieved: %s \n", (char *)chunk->memory);
-	}
+        }
         curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
@@ -145,8 +135,23 @@ cJSON *json_parsing(char *data, int PRINT_FLAG) {
 		printf("This information was retrieved: %s \n", json_string);
 		free(json_string);
 	}
-
 	return json;
+}
+
+
+const char *search_logo(const char *service_to_match) {
+	const char *logo;
+	Logo logo_list[] = {
+		{"pi-hole", pihole_logo},
+	};
+	const int num_logos = sizeof(logo_list) / sizeof(logo_list[0]);
+
+	for (int i = 0; i<num_logos; i++) {
+		if (strcmp(logo_list[i].name, service_to_match) == 0) {
+			return logo_list[i].logo;
+		}
+	}
+	return NULL;
 }
 
 
@@ -170,11 +175,19 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		snprintf(concatenated_values[i], SIZE, "%s: %d", values_list[i], value->valueint);
 		}
 	}
+
+	const char *logo = search_logo(service_to_print->service);
+	if (logo == NULL) return -1;
 	
-	printf(pihole_logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
+	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4], concatenated_values[5]);
 	return 0;
 }
+
+
+int single_service_information() {
+}
+
 
 
 int main(void) {
