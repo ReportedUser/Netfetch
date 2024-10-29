@@ -67,7 +67,7 @@ int parse_config(struct ServiceConfig *current_service, const char *filename) {
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
-		perror(RED"Error opening config,txt file: make sure it exists.\n"RESET);
+		perror(RED"Make sure the config.txt file exists.\n"RESET);
 		return -1;
 	}
 	while (fgets(line, sizeof(line), file)){
@@ -185,11 +185,6 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 }
 
 
-int single_service_information() {
-}
-
-
-
 int main(void) {
 	int RC = 0;
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
@@ -199,15 +194,28 @@ int main(void) {
 	chunk.size = 0;
 
 	RC = parse_config(service, "config.txt");
-	if (RC == -1) return RC;
+	if (RC == -1) {
+		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
+		return RC;
+	}
 	
 	RC = fetch_information(service->link, &chunk);
-	if (RC == -1) return RC;
+	if (RC == -1) {
+		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
+		return RC;
+	}
 
 	cJSON *parsed_json = json_parsing(chunk.memory, 0);
-	if (parsed_json == NULL) return -1;
+	if (parsed_json == NULL) {
+		printf(RED"There was an error when trying to parse the json.\n"RESET);
+		return -1;
+	}
 
-	service_print(service, parsed_json);
+	RC = service_print(service, parsed_json);
+	if (RC == -1) {
+		printf(RED"There was an error when trying to print the information.\n"RESET);
+		return RC;
+	}
 
 	free(service);
 	service= NULL;
