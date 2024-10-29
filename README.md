@@ -5,7 +5,7 @@ A command-line network information tool for your homelab. Read this instruction 
 
 For Debian make sure you got:
 
-    $ apt get install libpsl-dev libcurl4
+    $ apt get install libpsl-dev libcurl4 git build-essential
 
 #### Installation.
 
