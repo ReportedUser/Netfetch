@@ -37,6 +37,7 @@ typedef struct {
 	const char* logo;
 } Logo;
 
+
 int organize_service_data(char line[256], struct ServiceConfig *current_service) {
 	char key[128], value[128];
 
@@ -67,7 +68,7 @@ int parse_config(struct ServiceConfig *current_service, const char *filename) {
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
-		perror(RED"Make sure the config.txt file exists.\n"RESET);
+		perror(RED"Error opening config,txt file: make sure it exists.\n"RESET);
 		return -1;
 	}
 	while (fgets(line, sizeof(line), file)){
@@ -114,8 +115,8 @@ int fetch_information(char URL[200], struct MemoryStruct *chunk){
         if(res != CURLE_OK) {
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
 		return -1;
-        }
-        curl_easy_cleanup(curl);
+  }
+  curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
 	return 1;
@@ -175,7 +176,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		snprintf(concatenated_values[i], SIZE, "%s: %d", values_list[i], value->valueint);
 		}
 	}
-
+  
 	const char *logo = search_logo(service_to_print->service);
 	if (logo == NULL) return -1;
 	
