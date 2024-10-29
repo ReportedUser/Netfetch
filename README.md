@@ -1,4 +1,5 @@
 # Netfetch
+
 A command-line network information tool for your homelab. Read this instruction to learn how it's used.
 
 #### Dependencies.
