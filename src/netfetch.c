@@ -6,13 +6,14 @@
 #include <logos.h>
 #include <limits.h>
 #include <cJSON.h>
+#include <argp.h>
 
 
 #define RED "\033[1;31m"
 #define GREEN "\033[1;32m"
 #define RESET "\033[0m"
 #define SIZE 30 
-
+#define SERVICESQUANTITY 5
 
 struct ServiceConfig {
 	char service[50];
@@ -25,12 +26,12 @@ struct ServiceConfig {
 	char value_6[SIZE];
 };
 
+struct ServiceConfig ServiceArray[SERVICESQUANTITY];
 
 struct MemoryStruct {
 	char *memory;
 	size_t size;
 };
-
 
 typedef struct {
 	const char* name;
@@ -63,7 +64,7 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
 
 
 int parse_config(struct ServiceConfig *current_service, const char *filename) {
-	int c, RC;
+	int RC;
 	char line[256];
 	FILE *file = fopen(filename, "r");
 
@@ -186,13 +187,65 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 }
 
 
-int main(void) {
+int get_service() {
 	int RC = 0;
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	struct MemoryStruct chunk;
 	
 	chunk.memory = malloc(1);
 	chunk.size = 0;
+
+	RC = parse_config(service, "config.txt");
+	if (RC == -1) {
+		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
+		return RC;
+	}
+	
+	RC = fetch_information(service->link, &chunk);
+	if (RC == -1) {
+		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
+		return RC;
+	}
+
+	cJSON *parsed_json = json_parsing(chunk.memory, 0);
+	if (parsed_json == NULL) {
+		printf(RED"There was an error when trying to parse the json.\n"RESET);
+		return -1;
+	}
+
+	RC = service_print(service, parsed_json);
+	if (RC == -1) {
+		printf(RED"There was an error when trying to print the information.\n"RESET);
+		return RC;
+	}
+
+	free(service);
+	service= NULL;
+	return RC;
+}
+
+
+const char *argp_program_version =
+  "Netfetch version 0.1";
+const char *argp_program_bug_address =
+  "<pleasefirsttry@gmail.com>";
+
+static char doc[] =
+  "This is a simple cli application to display information fetched from your chosen services.";
+
+static struct argp argp = { 0, 0, 0, doc };
+
+
+int main(int argc, char **argv) {
+	argp_parse(&argp, argc, argv, 0, 0, 0);
+	
+	int RC = 0;
+	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
+	struct MemoryStruct chunk;
+
+	chunk.memory = malloc(1);
+	chunk.size = 0;
+
 
 	RC = parse_config(service, "config.txt");
 	if (RC == -1) {
