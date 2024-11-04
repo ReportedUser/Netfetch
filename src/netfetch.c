@@ -26,7 +26,6 @@ struct ServiceConfig {
 	char value_6[SIZE];
 };
 
-struct ServiceConfig ServiceArray[SERVICESQUANTITY];
 
 struct MemoryStruct {
 	char *memory;
@@ -63,8 +62,9 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
 }
 
 
-int parse_config(struct ServiceConfig *current_service, const char *filename) {
-	int RC;
+int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
+	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
+	int RC, i = 0;
 	char line[256];
 	FILE *file = fopen(filename, "r");
 
@@ -74,12 +74,17 @@ int parse_config(struct ServiceConfig *current_service, const char *filename) {
 	}
 	while (fgets(line, sizeof(line), file)){
 		if (line[0] == '[') {
-			sscanf(line, "[%[^]]", current_service->service);
+			current_service[i] = service;
+			memset(service, 0, sizeof(struct ServiceConfig));
+			i ++;
+			sscanf(line, "[%[^]]", service->service);
 		}
-		RC = organize_service_data(line, current_service);
+		RC = organize_service_data(line, service);
+		if (RC == -1) return RC;
 	}
+	if (feof(file)) current_service[i] = service;
 	fclose(file);
-	return 0;
+	return RC;
 };
 
 
@@ -179,7 +184,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 	}
   
 	const char *logo = search_logo(service_to_print->service);
-	if (logo == NULL) return -1;
+	if (logo == NULL) {printf("Can't find the specified logo."); return -1;}
 	
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4], concatenated_values[5]);
@@ -187,46 +192,9 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 }
 
 
-int get_service() {
-	int RC = 0;
-	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
-	struct MemoryStruct chunk;
-	
-	chunk.memory = malloc(1);
-	chunk.size = 0;
-
-	RC = parse_config(service, "config.txt");
-	if (RC == -1) {
-		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
-		return RC;
-	}
-	
-	RC = fetch_information(service->link, &chunk);
-	if (RC == -1) {
-		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
-		return RC;
-	}
-
-	cJSON *parsed_json = json_parsing(chunk.memory, 0);
-	if (parsed_json == NULL) {
-		printf(RED"There was an error when trying to parse the json.\n"RESET);
-		return -1;
-	}
-
-	RC = service_print(service, parsed_json);
-	if (RC == -1) {
-		printf(RED"There was an error when trying to print the information.\n"RESET);
-		return RC;
-	}
-
-	free(service);
-	service= NULL;
-	return RC;
-}
-
-
 const char *argp_program_version =
   "Netfetch version 0.1";
+
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
 
@@ -240,38 +208,34 @@ int main(int argc, char **argv) {
 	argp_parse(&argp, argc, argv, 0, 0, 0);
 	
 	int RC = 0;
-	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
+	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 	struct MemoryStruct chunk;
 
 	chunk.memory = malloc(1);
 	chunk.size = 0;
 
 
-	RC = parse_config(service, "config.txt");
+	RC = parse_config(ServiceArray, "config.txt");
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
 		return RC;
 	}
 	
-	RC = fetch_information(service->link, &chunk);
+	RC = fetch_information(ServiceArray[1]->link, &chunk);
 	if (RC == -1) {
 		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
 		return RC;
 	}
-
 	cJSON *parsed_json = json_parsing(chunk.memory, 0);
 	if (parsed_json == NULL) {
 		printf(RED"There was an error when trying to parse the json.\n"RESET);
 		return -1;
 	}
-
-	RC = service_print(service, parsed_json);
+	RC = service_print(ServiceArray[1], parsed_json);
 	if (RC == -1) {
 		printf(RED"There was an error when trying to print the information.\n"RESET);
 		return RC;
 	}
 
-	free(service);
-	service= NULL;
 	return RC;
 }
