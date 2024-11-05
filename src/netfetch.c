@@ -197,14 +197,51 @@ const char *argp_program_version =
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
 
+static struct argp_option options[] = {
+	{"show-all", 'a', 0, 0, "Display all the current monitored services."},
+	{"display", 'd', "service", 0, "Show more information of a specific service."},
+	{ 0 }
+};
+
 static char doc[] =
   "This is a simple cli application to display information fetched from your chosen services.";
 
-static struct argp argp = { 0, 0, 0, doc };
+struct arguments {
+	char *service;
+	int showall, temp;
+};
+
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+	struct arguments *arguments = state->input;
+
+	switch (key)
+		{
+		case 'a':
+			arguments->showall = 1;
+			break;
+		case 'd':
+			arguments->service = arg;
+			break;
+		case ARGP_KEY_ARG:
+			if (state->arg_num < 2)	argp_usage(state);
+			break;
+		default:
+			return ARGP_ERR_UNKNOWN;
+		}
+	return 0;
+}
+
+
+static struct argp argp = { options, parse_opt, 0, doc };
 
 
 int main(int argc, char **argv) {
-	argp_parse(&argp, argc, argv, 0, 0, 0);
+	struct arguments arguments;
+	arguments.showall = 0;
+	arguments.temp = 0;
+
+	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 	
 	int RC = 0;
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
@@ -220,24 +257,30 @@ int main(int argc, char **argv) {
 		return RC;
 	}
 
-	printf("Service name: %s\n", ServiceArray[0]->service);
-	printf("Service name: %s\n", ServiceArray[1]->service);
-
-	RC = fetch_information(ServiceArray[0]->link, &chunk);
-	if (RC == -1) {
-		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
-		return RC;
+	if (arguments.showall == 1) {
+		printf("This implementation is not yet implemented by the implementer. \n");
+	} else {
+		for (int i = 0; i < SERVICESQUANTITY; i++) {
+			if (ServiceArray[i] == NULL) break;
+			if (strcmp(ServiceArray[i]->service, arguments.service) == 0) {
+				printf("This is the choosen service: %s\n", arguments.service);
+				RC = fetch_information(ServiceArray[i]->link, &chunk);
+				if (RC == -1) {
+					printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
+					return RC;
+				}
+				cJSON *parsed_json = json_parsing(chunk.memory, 0);
+				if (parsed_json == NULL) {
+					printf(RED"There was an error when trying to parse the json.\n"RESET);
+					return -1;
+				}
+				RC = service_print(ServiceArray[i], parsed_json);
+				if (RC == -1) {
+					printf(RED"There was an error when trying to print the information.\n"RESET);
+					return RC;
+				}
+			}
+		}
 	}
-	cJSON *parsed_json = json_parsing(chunk.memory, 0);
-	if (parsed_json == NULL) {
-		printf(RED"There was an error when trying to parse the json.\n"RESET);
-		return -1;
-	}
-	RC = service_print(ServiceArray[0], parsed_json);
-	if (RC == -1) {
-		printf(RED"There was an error when trying to print the information.\n"RESET);
-		return RC;
-	}
-
 	return RC;
 }
