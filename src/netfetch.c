@@ -192,7 +192,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 
 
 const char *argp_program_version =
-  "Netfetch version 0.1";
+  "Netfetch version 0.2";
 
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
@@ -204,7 +204,7 @@ static struct argp_option options[] = {
 };
 
 static char doc[] =
-  "This is a simple cli application to display information fetched from your chosen services.";
+  "This is a simple cli application to display information fetched from your chosen services. It is supposed to be easy to use and give few but relevant information.";
 
 struct arguments {
 	char *service;
@@ -262,8 +262,7 @@ int main(int argc, char **argv) {
 	} else {
 		for (int i = 0; i < SERVICESQUANTITY; i++) {
 			if (ServiceArray[i] == NULL) break;
-			if (strcmp(ServiceArray[i]->service, arguments.service) == 0) {
-				printf("This is the choosen service: %s\n", arguments.service);
+			else if (strcmp(ServiceArray[i]->service, arguments.service) == 0) {
 				RC = fetch_information(ServiceArray[i]->link, &chunk);
 				if (RC == -1) {
 					printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
