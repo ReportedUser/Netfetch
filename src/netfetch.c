@@ -66,21 +66,22 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
 	char line[256];
+	current_service[i] = malloc(sizeof(struct ServiceConfig));
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
-		perror(RED"Error opening config,txt file: make sure it exists.\n"RESET);
+		perror(RED"Error opening config.txt file: make sure it exists.\n"RESET);
 		return -1;
 	}
 	while (fgets(line, sizeof(line), file)){
 		if (line[0] == '[') {
-			current_service[i] = service;
-			memset(service, 0, sizeof(struct ServiceConfig));
+			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
-			sscanf(line, "[%[^]]", service->service);
+			current_service[i] = malloc(sizeof(struct ServiceConfig));
+		} else {
+			RC = organize_service_data(line, current_service[i-1]);
+			if (RC == -1) return RC;
 		}
-		RC = organize_service_data(line, service);
-		if (RC == -1) return RC;
 	}
 	if (feof(file)) current_service[i] = service;
 	fclose(file);
@@ -150,6 +151,7 @@ const char *search_logo(const char *service_to_match) {
 	const char *logo;
 	Logo logo_list[] = {
 		{"pi-hole", pihole_logo},
+		{"server-test", test_logo},
 	};
 	const int num_logos = sizeof(logo_list) / sizeof(logo_list[0]);
 
@@ -163,7 +165,6 @@ const char *search_logo(const char *service_to_match) {
 
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
-
 	char concatenated_values[6][SIZE];
 	char *values_list[6] = {
 		service_to_print->value_1,
@@ -182,10 +183,8 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		snprintf(concatenated_values[i], SIZE, "%s: %d", values_list[i], value->valueint);
 		}
 	}
-  
 	const char *logo = search_logo(service_to_print->service);
 	if (logo == NULL) {printf("Can't find the specified logo."); return -1;}
-	
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4], concatenated_values[5]);
 	return 0;
@@ -220,8 +219,11 @@ int main(int argc, char **argv) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
 		return RC;
 	}
-	
-	RC = fetch_information(ServiceArray[1]->link, &chunk);
+
+	printf("Service name: %s\n", ServiceArray[0]->service);
+	printf("Service name: %s\n", ServiceArray[1]->service);
+
+	RC = fetch_information(ServiceArray[0]->link, &chunk);
 	if (RC == -1) {
 		printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
 		return RC;
@@ -231,7 +233,7 @@ int main(int argc, char **argv) {
 		printf(RED"There was an error when trying to parse the json.\n"RESET);
 		return -1;
 	}
-	RC = service_print(ServiceArray[1], parsed_json);
+	RC = service_print(ServiceArray[0], parsed_json);
 	if (RC == -1) {
 		printf(RED"There was an error when trying to print the information.\n"RESET);
 		return RC;

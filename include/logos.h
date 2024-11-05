@@ -29,4 +29,9 @@ RED "       .:-------------:		\n"
 RED "         .:--------:.		\n"
 RED "           .::::::.		\n";
 
+
+
+const char* test_logo =
+"YES, THIS IS A BIIIIIG LOGO.\n";
+
 #endif // ASCII_LOGOS_H
