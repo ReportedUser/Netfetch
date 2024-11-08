@@ -63,6 +63,7 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
 
 
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
+
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
 	char line[256];
@@ -199,7 +200,8 @@ const char *argp_program_bug_address =
 
 static struct argp_option options[] = {
 	{"show-all", 'a', 0, 0, "Display all the current monitored services."},
-	{"display", 'd', "service", 0, "Show more information of a specific service."},
+	{"display", 'd', "service", 0, "Show more information about a specific service."},
+	{"available", 'l', 0, 0, "List current services in the configuration file."},
 	{ 0 }
 };
 
@@ -208,7 +210,8 @@ static char doc[] =
 
 struct arguments {
 	char *service;
-	int showall, temp;
+	int showall;
+	int available;
 };
 
 
@@ -219,6 +222,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 		{
 		case 'a':
 			arguments->showall = 1;
+			break;
+		case 'l':
+			arguments->available = 1;
 			break;
 		case 'd':
 			arguments->service = arg;
@@ -239,7 +245,7 @@ static struct argp argp = { options, parse_opt, 0, doc };
 int main(int argc, char **argv) {
 	struct arguments arguments;
 	arguments.showall = 0;
-	arguments.temp = 0;
+	arguments.available = 0;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 	
@@ -257,9 +263,15 @@ int main(int argc, char **argv) {
 		return RC;
 	}
 
-	if (arguments.showall == 1) {
-		printf("This implementation is not yet implemented by the implementer. \n");
-	} else {
+	if (arguments.available == 1){
+		printf("The current available services to display are the following:\n");
+		for (int i = 0; i < SERVICESQUANTITY; i++) {
+			if (ServiceArray[i] == NULL) break;
+			printf("%s \t", ServiceArray[i]->service);
+		}
+		printf("\n");
+		return RC;
+	} else if (arguments.service != NULL) {
 		for (int i = 0; i < SERVICESQUANTITY; i++) {
 			if (ServiceArray[i] == NULL) break;
 			else if (strcmp(ServiceArray[i]->service, arguments.service) == 0) {
@@ -280,6 +292,8 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+	} else if (arguments.showall == 1 || (!arguments.available && !arguments.showall && !arguments.service)) {
+		printf("This implementation is not yet implemented by the implementer. \n");
 	}
 	return RC;
 }
