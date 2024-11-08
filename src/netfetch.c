@@ -38,6 +38,56 @@ typedef struct {
 } Logo;
 
 
+const char *argp_program_version =
+  "Netfetch version 0.3";
+
+const char *argp_program_bug_address =
+  "<pleasefirsttry@gmail.com>";
+
+static struct argp_option options[] = {
+	{"show-all", 'a', 0, 0, " Display information for all monitored services."},
+	{"display", 'd', "service", 0, "Show detailed information for a specific service."},
+	{"list", 'l', 0, 0, "List all services defined in the configuration."},
+	{ 0 }
+};
+
+static char doc[] =
+  "A simple command-line application to display information fetched from selected services. Designed to be easy to use and provide concise, relevant information."; 
+
+struct arguments {
+	char *service;
+	int showall;
+	int list;
+};
+
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+	struct arguments *arguments = state->input;
+
+	switch (key)
+		{
+		case 'a':
+			arguments->showall = 1;
+			break;
+		case 'l':
+			arguments->list= 1;
+			break;
+		case 'd':
+			arguments->service = arg;
+			break;
+		case ARGP_KEY_ARG:
+			if (state->arg_num < 2)	argp_usage(state);
+			break;
+		default:
+			return ARGP_ERR_UNKNOWN;
+		}
+	return 0;
+}
+
+
+static struct argp argp = { options, parse_opt, 0, doc };
+
+
 int organize_service_data(char line[256], struct ServiceConfig *current_service) {
 	char key[128], value[128];
 
@@ -63,6 +113,7 @@ int organize_service_data(char line[256], struct ServiceConfig *current_service)
 
 
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
+
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
 	char line[256];
@@ -191,95 +242,73 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 }
 
 
-const char *argp_program_version =
-  "Netfetch version 0.2";
 
-const char *argp_program_bug_address =
-  "<pleasefirsttry@gmail.com>";
-
-static struct argp_option options[] = {
-	{"show-all", 'a', 0, 0, "Display all the current monitored services."},
-	{"display", 'd', "service", 0, "Show more information of a specific service."},
-	{ 0 }
-};
-
-static char doc[] =
-  "This is a simple cli application to display information fetched from your chosen services. It is supposed to be easy to use and give few but relevant information.";
-
-struct arguments {
-	char *service;
-	int showall, temp;
-};
-
-
-static error_t parse_opt(int key, char *arg, struct argp_state *state) {
-	struct arguments *arguments = state->input;
-
-	switch (key)
-		{
-		case 'a':
-			arguments->showall = 1;
-			break;
-		case 'd':
-			arguments->service = arg;
-			break;
-		case ARGP_KEY_ARG:
-			if (state->arg_num < 2)	argp_usage(state);
-			break;
-		default:
-			return ARGP_ERR_UNKNOWN;
-		}
-	return 0;
-}
-
-
-static struct argp argp = { options, parse_opt, 0, doc };
-
-
-int main(int argc, char **argv) {
-	struct arguments arguments;
-	arguments.showall = 0;
-	arguments.temp = 0;
-
-	argp_parse(&argp, argc, argv, 0, 0, &arguments);
-	
+int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arguments arguments) {
 	int RC = 0;
-	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 	struct MemoryStruct chunk;
 
 	chunk.memory = malloc(1);
 	chunk.size = 0;
 
+	for (int i = 0; i < SERVICESQUANTITY; i++) {
+		if (ServiceList[i] == NULL) break;
+		else if (strcmp(ServiceList[i]->service, arguments.service) == 0) {
+			RC = fetch_information(ServiceList[i]->link, &chunk);
+			if (RC == -1) {
+				printf(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
+				return RC;
+			}
+			cJSON *parsed_json = json_parsing(chunk.memory, 0);
+			if (parsed_json == NULL) {
+				printf(RED"Error: An issue occurred while parsing the JSON data. Please ensure the data format is correct.\n"RESET);
+				return -1;
+			}
+			RC = service_print(ServiceList[i], parsed_json);
+			if (RC == -1) {
+				printf(RED" Error: An issue occurred while displaying the information. Make sure a logo exists for the choosen service.\n"RESET);
+				return RC;
+			}
+		}
+	}
+	return RC;
+}
+
+
+int list_services(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
+
+	printf("The current available services to display are the following:\n");
+	for (int i = 0; i < SERVICESQUANTITY; i++) {
+		if (ServiceList[i] == NULL) break;
+		printf("%s \t", ServiceList[i]->service);
+	}
+	printf("\n");
+
+	return 0;
+}
+
+
+int main(int argc, char **argv) {
+	struct arguments arguments;
+	arguments.showall = 0;
+	arguments.list = 0;
+
+	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+	
+	int RC = 0;
+	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 
 	RC = parse_config(ServiceArray, "config.txt");
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
 		return RC;
 	}
-
-	if (arguments.showall == 1) {
+	if (arguments.list == 1){
+		RC = list_services(ServiceArray);
+	} else if (arguments.service != NULL) {
+		RC = find_service(ServiceArray, arguments);
+		if (RC == -1) return RC;
+	} else if (arguments.showall == 1 || (!arguments.list && !arguments.showall && !arguments.service)) {
 		printf("This implementation is not yet implemented by the implementer. \n");
-	} else {
-		for (int i = 0; i < SERVICESQUANTITY; i++) {
-			if (ServiceArray[i] == NULL) break;
-			else if (strcmp(ServiceArray[i]->service, arguments.service) == 0) {
-				RC = fetch_information(ServiceArray[i]->link, &chunk);
-				if (RC == -1) {
-					printf(RED"There was an error fetching the information. \n Check your connection and make sure the link is correct.\n"RESET);
-					return RC;
-				}
-				cJSON *parsed_json = json_parsing(chunk.memory, 0);
-				if (parsed_json == NULL) {
-					printf(RED"There was an error when trying to parse the json.\n"RESET);
-					return -1;
-				}
-				RC = service_print(ServiceArray[i], parsed_json);
-				if (RC == -1) {
-					printf(RED"There was an error when trying to print the information.\n"RESET);
-					return RC;
-				}
-			}
-		}
 	}
 	return RC;
 }

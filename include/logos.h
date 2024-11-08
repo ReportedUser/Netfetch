@@ -32,6 +32,11 @@ RED "           .::::::.		\n";
 
 
 const char* test_logo =
-"YES, THIS IS A BIIIIIG LOGO.\n";
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
+"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n";
 
 #endif // ASCII_LOGOS_H
