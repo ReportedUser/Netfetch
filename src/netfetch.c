@@ -147,7 +147,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 	char *ptr = realloc(currentdata->memory, currentdata->size + realsize + 1);
 	if(!ptr){
 		/* out of memory! */
-		printf("not enough memory (relloc returned NULL)\n");
+		perror("not enough memory (relloc returned NULL)\n");
 		return 0;
 	}
 	currentdata->memory = ptr;
@@ -199,7 +199,6 @@ cJSON *json_parsing(char *data, int PRINT_FLAG) {
 
 
 const char *search_logo(const char *service_to_match) {
-	const char *logo;
 	Logo logo_list[] = {
 		{"pi-hole", pihole_logo},
 		{"server-test", test_logo},
@@ -235,7 +234,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		}
 	}
 	const char *logo = search_logo(service_to_print->service);
-	if (logo == NULL) {printf("Can't find the specified logo."); return -1;}
+	if (logo == NULL) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4], concatenated_values[5]);
 	return 0;
@@ -255,17 +254,17 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 		else if (strcmp(ServiceList[i]->service, arguments.service) == 0) {
 			RC = fetch_information(ServiceList[i]->link, &chunk);
 			if (RC == -1) {
-				printf(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
+				perror(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
 				return RC;
 			}
 			cJSON *parsed_json = json_parsing(chunk.memory, 0);
 			if (parsed_json == NULL) {
-				printf(RED"Error: An issue occurred while parsing the JSON data. Please ensure the data format is correct.\n"RESET);
+				perror(RED"Error: An issue occurred while parsing the JSON data. Please ensure the data format is correct.\n"RESET);
 				return -1;
 			}
 			RC = service_print(ServiceList[i], parsed_json);
 			if (RC == -1) {
-				printf(RED" Error: An issue occurred while displaying the information. Make sure a logo exists for the choosen service.\n"RESET);
+				perror(RED" Error: An issue occurred while displaying the information.\n"RESET);
 				return RC;
 			}
 		}
