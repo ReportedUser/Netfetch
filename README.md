@@ -85,3 +85,10 @@ Example:
 
 Replace "pi-hole" with the chosen name for the service, and pihole_logo with the header constant for the logo.
 
+____________________________________________________________
+
+### Comments
+
+I'll do my best to maintain and improve this repository. If you got any ideas for new features or find any issue, please don't hesitate to tell me. :smiley:
+
+Finally, from the time being I won't be accepting pull requests as I'm also using this project to improve my C knowledge. 
