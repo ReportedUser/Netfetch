@@ -234,7 +234,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		}
 	}
 	const char *logo = search_logo(service_to_print->service);
-	if (logo == NULL) perror("Can't find the specified logo."); return -1;
+	if (logo == NULL) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4], concatenated_values[5]);
 	return 0;
@@ -264,7 +264,7 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 			}
 			RC = service_print(ServiceList[i], parsed_json);
 			if (RC == -1) {
-				perror(RED" Error: An issue occurred while displaying the information. Make sure a logo exists for the choosen service.\n"RESET);
+				perror(RED" Error: An issue occurred while displaying the information.\n"RESET);
 				return RC;
 			}
 		}
