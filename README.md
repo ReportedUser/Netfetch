@@ -1,24 +1,26 @@
 # Netfetch
 
-A command-line network information tool for your homelab. Read this instruction to learn how it's used.
+A powerful command-line tool designed to provide detailed network information, perfect for managing and troubleshooting your homelab. Follow the instructions below to get started.
 
 #### Dependencies.
 
-For Debian make sure you got:
+For Debian-based systems, ensure the following packages are installed:
 
     $ apt get install libpsl-dev libcurl4 git build-essential
 
 #### Installation.
 
-Clone this repository and launch the Makefile:
+Clone this repository:
     
     $ git clone git@github.com:ReportedUser/Netfetch.git
-    $ ./Makefile
+    
+Run the Makefile to build the application:
+
+    $ make
 
 #### Usage.
 
-In order to use this cli application, it's necessary to add some information to the config.txt file. Follow this structure:
-
+To get started, you'll need to configure the config.txt file with the necessary details for each service. Follow the structure below to add the relevant configuration:
 ```
 [service-name]
 link=linkwheretheAPIis
@@ -28,7 +30,7 @@ value_2= ...
 value_6= ...
 ```
 
-Where value_X=... is the key value. Here is an example using the Pi-hole API service:
+Where value_X=... represents key-value pairs. Here’s an example configuration for the Pi-hole API service:
 
 ```
 [pi-hole] #This is the name used to find the logo.
@@ -39,19 +41,22 @@ value_3=ads_blocked_today
 value_4=ads_percentage_today
 ```
 
-There are a lot of posible services, I'm don't make use of a lot of them so this list will never be completly filled.
-If there is a service that you feel like it's really used and believe it should be added, say so and it will be added to the default list.
+Please note, while many services are supported, I may not use all of them, so this list might not be fully comprehensive. If there’s a service you think should be included by default, feel free to suggest it, and I’ll add it to the list.
 
 
 These are the current default logos:
 
 - Pi-hole -> [pi-hole]
 
-You can create your own logo with the instructions on this next section.
+You can easily create your own custom logos by following the instructions in the section below.
 
 #### Create your own service logo!
 
-The tool used for the cli art is the following: [ascii-image-converter by TheZoraiz](https://github.com/TheZoraiz/ascii-image-converter)
+To create a custom logo for your service, you can use the following tool:
+ - [ascii-image-converter by TheZoraiz](https://github.com/TheZoraiz/ascii-image-converter)
+
+This tool allows you to convert images into ASCII art, which can then be used as your custom logo in the configuration.
+
 
 Characteristics used are the following:
 
