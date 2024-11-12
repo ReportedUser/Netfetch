@@ -30,6 +30,7 @@ struct ServiceConfig {
 struct MemoryStruct {
 	char *memory;
 	size_t size;
+	int available;
 };
 
 typedef struct {
@@ -39,7 +40,7 @@ typedef struct {
 
 
 const char *argp_program_version =
-  "Netfetch version 0.3";
+  "Netfetch version 0.4";
 
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
@@ -117,7 +118,6 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
 	char line[256];
-	current_service[i] = malloc(sizeof(struct ServiceConfig));
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
@@ -126,15 +126,14 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 	}
 	while (fgets(line, sizeof(line), file)){
 		if (line[0] == '[') {
+			current_service[i] = malloc(sizeof(struct ServiceConfig));
 			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
-			current_service[i] = malloc(sizeof(struct ServiceConfig));
 		} else {
 			RC = organize_service_data(line, current_service[i-1]);
 			if (RC == -1) return RC;
 		}
 	}
-	if (feof(file)) current_service[i] = service;
 	fclose(file);
 	return RC;
 };
@@ -158,7 +157,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 }
 
 
-int fetch_information(char URL[200], struct MemoryStruct *chunk){
+int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
 	CURL *curl;
 	CURLcode res;
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -170,10 +169,13 @@ int fetch_information(char URL[200], struct MemoryStruct *chunk){
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
 		// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		res = curl_easy_perform(curl);
-        if(res != CURLE_OK) {
+        if(res != CURLE_OK && error == 1) {
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
 		return -1;
-  }
+	}
+        if(res != CURLE_OK && error == 0) {
+		return -1;
+	}
   curl_easy_cleanup(curl);
 	}
 	curl_global_cleanup();
@@ -236,10 +238,53 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 	const char *logo = search_logo(service_to_print->service);
 	if (logo == NULL) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
-	concatenated_values[4], concatenated_values[5]);
+	concatenated_values[4]);
 	return 0;
 }
 
+
+const char* add_status_color(int status){
+	if (status == 1) return "\t\033[32m●\033[0m ";
+	else return "\t\033[31m●\033[0m ";
+}
+
+
+int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availability[SERVICESQUANTITY]) {
+	int RC = 0;
+	char concatenated_values[6][50];
+	memset(concatenated_values, 0, sizeof(concatenated_values));
+
+	for (int i = 0; i < SERVICESQUANTITY; i++){
+		if (ServerList[i] == NULL) {
+			break;
+		}
+		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(availability[i]), ServerList[i]->service);
+	}
+	printf(show_general, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3], concatenated_values[4]);
+	return RC;
+}
+
+
+int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
+	int RC = 0;
+	struct MemoryStruct chunk;
+	int availableServices[SERVICESQUANTITY] = {0};
+
+	for (int i = 0; i < SERVICESQUANTITY; i++) {
+		if (ServiceList[i] == NULL) break;
+		chunk.memory = malloc(1);
+		chunk.size = 0;
+		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
+		if (RC == -1) {
+			continue;
+			availableServices[i] = 0;
+		} else {
+			availableServices[i] = 1;
+		}
+	}
+	RC = general_print(ServiceList, availableServices);
+	return RC;
+}
 
 
 int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arguments arguments) {
@@ -252,7 +297,7 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
 		if (ServiceList[i] == NULL) break;
 		else if (strcmp(ServiceList[i]->service, arguments.service) == 0) {
-			RC = fetch_information(ServiceList[i]->link, &chunk);
+			RC = fetch_information(ServiceList[i]->link, &chunk, 1);
 			if (RC == -1) {
 				perror(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
 				return RC;
@@ -267,7 +312,7 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 				perror(RED" Error: An issue occurred while displaying the information.\n"RESET);
 				return RC;
 			}
-		}
+		} 
 	}
 	return RC;
 }
@@ -295,6 +340,7 @@ int main(int argc, char **argv) {
 	
 	int RC = 0;
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
+	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
 	RC = parse_config(ServiceArray, "config.txt");
 	if (RC == -1) {
@@ -307,7 +353,7 @@ int main(int argc, char **argv) {
 		RC = find_service(ServiceArray, arguments);
 		if (RC == -1) return RC;
 	} else if (arguments.showall == 1 || (!arguments.list && !arguments.showall && !arguments.service)) {
-		printf("This implementation is not yet implemented by the implementer. \n");
+		RC = general_view(ServiceArray);
 	}
 	return RC;
 }

@@ -7,6 +7,10 @@
 #define RESET "\033[0m"
 
 
+const char* show_general = 
+"%s %s %s %s %s \n";
+
+
 const char* pihole_logo =
 GREEN " :+++=-:.			\n"	
 GREEN "  ++++++++-.			\t" RESET" [%s]	\n"
@@ -15,8 +19,8 @@ GREEN "   :++++===++=  .=+++++-		" RESET" %s 	\n"
 GREEN "     :=+++=--+:.+++++=:		\t" RESET" %s 	\n"
 GREEN "       .:-==. -=+=-:.		\t" RESET" %s 	\n"
 RED "            :.:::.			\t" RESET" %s   \n"
-RED "         .:--------:.		\t" RESET" %s   \n"
-RED "       .:------------:.		\t \n"
+RED "         .:--------:.		\n"
+RED "       .:------------:.		\n"
 RED "     .:--------------:::.		\n"
 RED "   .:::::-::-------:::::::.	\n"
 RED " .:::::::::. .......::::::::.	\n"
