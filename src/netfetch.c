@@ -158,6 +158,12 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 
 
 int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
+	/*
+	Curl to download the json.
+	The int error options is added to either end the program
+	with the error code or just check if the service is up.
+	*/
+
 	CURL *curl;
 	CURLcode res;
 	curl_global_init(CURL_GLOBAL_ALL);
@@ -201,6 +207,14 @@ cJSON *json_parsing(char *data, int PRINT_FLAG) {
 
 
 const char *search_logo(const char *service_to_match) {
+	/*
+	The logo is searched using this function.
+	Make sure the ascii logo is in the include/logos.h file.
+	Then add in the logo_list the name defined on the 
+	netfetch-services.conf and the logo variable name.
+	*/
+
+
 	Logo logo_list[] = {
 		{"pi-hole", pihole_logo},
 		{"server-test", test_logo},
@@ -342,7 +356,7 @@ int main(int argc, char **argv) {
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
-	RC = parse_config(ServiceArray, "config.txt");
+	RC = parse_config(ServiceArray, "netfetch-services.conf");
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
 		return RC;
