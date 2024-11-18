@@ -19,10 +19,13 @@ Clone this repository:
 Run the Makefile to build the application:
 
     $ make
+    $ make install
+
+Now you can delete the cloned repository.
 
 ### Usage
 
-To get started, you'll need to configure the config.txt file with the necessary details for each service. Follow the structure below to add the relevant configuration:
+To get started, you'll need to configure the netfetch-services.conf created inside `~/.config/netfetch/` file with the necessary details for each service. Follow the structure below to add the relevant configuration:
 ```
 [service-name]
 link=linkwheretheAPIis
