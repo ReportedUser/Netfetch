@@ -253,11 +253,9 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %d", temp_value, value->valueint);
 		}
 	}
-	char bold_service[100];
 	const char *logo = search_logo(service_to_print->service);
 	if (logo == NULL) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
-	snprintf(bold_service, sizeof(bold_service), "%s%s%s", bold, service_to_print->service, reset);
-	printf(logo, bold_service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
+	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4]);
 	return 0;
 }
