@@ -121,7 +121,7 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
-		perror(RED"Error opening config.txt file: make sure it exists.\n"RESET);
+		perror(RED"Error opening the configuration file: make sure it exists.\n"RESET);
 		return -1;
 	}
 	while (fgets(line, sizeof(line), file)){
@@ -356,7 +356,15 @@ int main(int argc, char **argv) {
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
-	RC = parse_config(ServiceArray, "netfetch-services.conf");
+	const char *home = getenv("HOME");
+	if (home == NULL) {
+		fprintf(stderr, "Error: Could not find HOME environment.\n");
+		return -1;
+	}
+	char config_path[200];
+	snprintf(config_path, sizeof(config_path),"%s/.config/netfetch/netfetch-services.conf", home);
+
+	RC = parse_config(ServiceArray, config_path);
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
 		return RC;
