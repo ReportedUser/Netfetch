@@ -231,7 +231,7 @@ const char *search_logo(const char *service_to_match) {
 
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
-	char concatenated_values[6][SIZE];
+	char concatenated_values[6][256];
 	char *values_list[6] = {
 		service_to_print->value_1,
 		service_to_print->value_2,
@@ -240,13 +240,17 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		service_to_print->value_5,
 		service_to_print->value_6,
 	};
+	const char *bold = "\033[1m";
+	const char *reset = "\033[0m";
 
 	for (int i = 0; i<5; i++) {
+		char temp_value[256];
 		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
+		snprintf(temp_value, sizeof(temp_value), "%s%s%s",bold, values_list[i], reset);
 		if (value != NULL && cJSON_IsString(value)) {
-		snprintf(concatenated_values[i], SIZE, "%s: %s", values_list[i], value->valuestring);
+		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %s", temp_value, value->valuestring);
 		} else if (value != NULL && cJSON_IsNumber(value)) {
-		snprintf(concatenated_values[i], SIZE, "%s: %d", values_list[i], value->valueint);
+		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %d", temp_value, value->valueint);
 		}
 	}
 	const char *logo = search_logo(service_to_print->service);

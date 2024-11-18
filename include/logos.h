@@ -13,12 +13,12 @@ const char* show_general =
 
 const char* pihole_logo =
 GREEN " :+++=-:.			\n"	
-GREEN "  ++++++++-.			\t" RESET" [%s]	\n"
+GREEN "  ++++++++-.			\t" RESET"\033[1m [%s]	\n"RESET
 GREEN "  :+++===+++-     .:-===		" RESET" %s	\n"
 GREEN "   :++++===++=  .=+++++-		" RESET" %s 	\n"
 GREEN "     :=+++=--+:.+++++=:		\t" RESET" %s 	\n"
 GREEN "       .:-==. -=+=-:.		\t" RESET" %s 	\n"
-RED "            :.:::.			\t" RESET" %s   \n"
+RED "            :.:::.			\n"
 RED "         .:--------:.		\n"
 RED "       .:------------:.		\n"
 RED "     .:--------------:::.		\n"
@@ -37,10 +37,10 @@ RED "           .::::::.		\n";
 
 const char* test_logo =
 "YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
-"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
-"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
-"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
-"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n"
-"YES, THIS IS A BIIIIIG LOGO.\t [%s]\n";
+"YES, THIS IS A BIIIIIG LOGO.\t %s\n"
+"YES, THIS IS A BIIIIIG LOGO.\t %s\n"
+"YES, THIS IS A BIIIIIG LOGO.\t %s\n"
+"YES, THIS IS A BIIIIIG LOGO.\t %s\n"
+"YES, THIS IS A BIIIIIG LOGO.\t %s\n";
 
 #endif // ASCII_LOGOS_H
