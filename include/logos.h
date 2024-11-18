@@ -13,7 +13,7 @@ const char* show_general =
 
 const char* pihole_logo =
 GREEN " :+++=-:.			\n"	
-GREEN "  ++++++++-.			\t" RESET"\033[1m [%s]	\n"RESET
+GREEN "  ++++++++-.			\t\033[1m [%s]	\n"RESET
 GREEN "  :+++===+++-     .:-===		" RESET" %s	\n"
 GREEN "   :++++===++=  .=+++++-		" RESET" %s 	\n"
 GREEN "     :=+++=--+:.+++++=:		\t" RESET" %s 	\n"
