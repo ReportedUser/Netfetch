@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,6 +230,15 @@ const char *search_logo(const char *service_to_match) {
 	return NULL;
 }
 
+char* replace_char(char* str, char find, char replace) {
+	char *current_pos = strchr(str, find);
+	while (current_pos) {
+		*current_pos = replace;
+		current_pos = strchr(current_pos, find);
+	}
+	return str;
+}
+
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
 	char concatenated_values[6][256];
@@ -245,8 +255,11 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 
 	for (int i = 0; i<5; i++) {
 		char temp_value[256];
+		char service_key[256];
 		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
+		values_list[i][0] = toupper(values_list[i][0]);
 		snprintf(temp_value, sizeof(temp_value), "%s%s%s",bold, values_list[i], reset);
+		replace_char(temp_value, '_', ' ');
 		if (value != NULL && cJSON_IsString(value)) {
 		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %s", temp_value, value->valuestring);
 		} else if (value != NULL && cJSON_IsNumber(value)) {
