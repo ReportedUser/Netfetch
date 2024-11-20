@@ -351,10 +351,12 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 			if (RC == -1) {
 				perror(RED" Error: An issue occurred while displaying the information.\n"RESET);
 				return RC;
-			}
-		} 
+			} else
+				return RC;
+		}
 	}
-	return RC;
+	printf("Couldn't find information for %s.\n", arguments.service);
+	return -1;
 }
 
 
