@@ -12,9 +12,12 @@
 
 #define RED "\033[1;31m"
 #define GREEN "\033[1;32m"
+#define BOLD "\033[1m"
 #define RESET "\033[0m"
 #define SIZE 30 
 #define SERVICESQUANTITY 5
+#define MAX_URL_LENGTH 200
+#define MAX_KEY_AND_VALUE_LENGTH 400
 
 struct ServiceConfig {
 	char service[50];
@@ -90,23 +93,28 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, 0, doc };
 
 
-int organize_service_data(char line[256], struct ServiceConfig *current_service) {
-	char key[128], value[128];
+int organize_service_data(char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service) {
+	char key[MAX_KEY_AND_VALUE_LENGTH];
+	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
 
         if (sscanf(line, "%[^=]=%s", key, value) == 2) {
-        if (strcmp(key, "link") == 0) {
-                strncpy(current_service->link, value, sizeof(current_service->link)-1);
-        } else if (strcmp(key, "value_1") == 0) {
+        if (!strcmp(key, "link")) {
+			if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
+				printf(RED"Error:"RESET" There is an issue with the URL.\n");
+				return -1;
+			}
+			strncpy(current_service->link, value, sizeof(current_service->link)-1);
+        } else if (!strcmp(key, "value_1")) {
                 strncpy(current_service->value_1, value, sizeof(current_service->value_1)-1);
-        } else if (strcmp(key, "value_2") == 0) {
+        } else if (!strcmp(key, "value_2")) {
                 strncpy(current_service->value_2, value, sizeof(current_service->value_2)-1);
-        } else if (strcmp(key, "value_3") == 0) {
+        } else if (!strcmp(key, "value_3")) {
                 strncpy(current_service->value_3, value, sizeof(current_service->value_3)-1);
-        } else if (strcmp(key, "value_4") == 0) {
+        } else if (!strcmp(key, "value_4")) {
                 strncpy(current_service->value_4, value, sizeof(current_service->value_4)-1);
-	} else if (strcmp(key, "value_5") == 0) {
+	} else if (!strcmp(key, "value_5")) {
                 strncpy(current_service->value_5, value, sizeof(current_service->value_5)-1);
-	} else if (strcmp(key, "value_6") == 0) {
+	} else if (!strcmp(key, "value_6")) {
                 strncpy(current_service->value_6, value, sizeof(current_service->value_6)-1);
 	}
 	}
@@ -118,7 +126,7 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
-	char line[256];
+	char line[MAX_KEY_AND_VALUE_LENGTH];
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
@@ -132,7 +140,10 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 			i ++;
 		} else {
 			RC = organize_service_data(line, current_service[i-1]);
-			if (RC == -1) return RC;
+			if (RC == -1) {
+				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
+				return RC;
+			}
 		}
 	}
 	fclose(file);
@@ -158,7 +169,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 }
 
 
-int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
+int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
 	/*
 	Curl to download the json.
 	The int error options is added to either end the program
@@ -180,7 +191,7 @@ int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
 		return -1;
 	}
-        if(res != CURLE_OK && error == 0) {
+        if(res != CURLE_OK && !error) {
 		return -1;
 	}
   curl_easy_cleanup(curl);
@@ -191,11 +202,11 @@ int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
 
 
 cJSON *json_parsing(char *data, int PRINT_FLAG) {
-	if (data==NULL) {
+	if (!data) {
 		return NULL;
 	}
 	cJSON *json = cJSON_Parse(data);
-	if (json == NULL){
+	if (!json){
 		fprintf(stderr, RED"No json data to parse, returning.\n"RESET);
 		return NULL;
 	} else if (PRINT_FLAG == 1){ 
@@ -223,7 +234,7 @@ const char *search_logo(const char *service_to_match) {
 	const int num_logos = sizeof(logo_list) / sizeof(logo_list[0]);
 
 	for (int i = 0; i<num_logos; i++) {
-		if (strcmp(logo_list[i].name, service_to_match) == 0) {
+		if (!strcmp(logo_list[i].name, service_to_match)) {
 			return logo_list[i].logo;
 		}
 	}
@@ -250,15 +261,14 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		service_to_print->value_5,
 		service_to_print->value_6,
 	};
-	const char *bold = "\033[1m";
-	const char *reset = "\033[0m";
 
 	for (int i = 0; i<5; i++) {
 		char temp_value[256];
 		char service_key[256];
 		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
 		values_list[i][0] = toupper(values_list[i][0]);
-		snprintf(temp_value, sizeof(temp_value), "%s%s%s",bold, values_list[i], reset);
+
+		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, values_list[i], RESET);
 		replace_char(temp_value, '_', ' ');
 		if (value != NULL && cJSON_IsString(value)) {
 		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %s", temp_value, value->valuestring);
@@ -267,7 +277,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		}
 	}
 	const char *logo = search_logo(service_to_print->service);
-	if (logo == NULL) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
+	if (!logo) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
 	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
 	concatenated_values[4]);
 	return 0;
@@ -286,7 +296,7 @@ int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availa
 	memset(concatenated_values, 0, sizeof(concatenated_values));
 
 	for (int i = 0; i < SERVICESQUANTITY; i++){
-		if (ServerList[i] == NULL) {
+		if (!ServerList[i]) {
 			break;
 		}
 		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(availability[i]), ServerList[i]->service);
@@ -302,7 +312,7 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
 	int availableServices[SERVICESQUANTITY] = {0};
 
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
-		if (ServiceList[i] == NULL) break;
+		if (!ServiceList[i]) break;
 		chunk.memory = malloc(1);
 		chunk.size = 0;
 		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
@@ -326,15 +336,15 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 	chunk.size = 0;
 
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
-		if (ServiceList[i] == NULL) break;
-		else if (strcmp(ServiceList[i]->service, arguments.service) == 0) {
+		if (!ServiceList[i]) break;
+		else if (!strcmp(ServiceList[i]->service, arguments.service)) {
 			RC = fetch_information(ServiceList[i]->link, &chunk, 1);
 			if (RC == -1) {
 				perror(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
 				return RC;
 			}
 			cJSON *parsed_json = json_parsing(chunk.memory, 0);
-			if (parsed_json == NULL) {
+			if (!parsed_json) {
 				perror(RED"Error: An issue occurred while parsing the JSON data. Please ensure the data format is correct.\n"RESET);
 				return -1;
 			}
@@ -342,10 +352,12 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 			if (RC == -1) {
 				perror(RED" Error: An issue occurred while displaying the information.\n"RESET);
 				return RC;
-			}
-		} 
+			} else
+				return RC;
+		}
 	}
-	return RC;
+	printf("Couldn't find information for %s.\n", arguments.service);
+	return -1;
 }
 
 
@@ -353,7 +365,7 @@ int list_services(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
 
 	printf("The current available services to display are the following:\n");
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
-		if (ServiceList[i] == NULL) break;
+		if (!ServiceList[i]) break;
 		printf("%s \t", ServiceList[i]->service);
 	}
 	printf("\n");
@@ -374,7 +386,7 @@ int main(int argc, char **argv) {
 	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
 	const char *home = getenv("HOME");
-	if (home == NULL) {
+	if (!home) {
 		fprintf(stderr, "Error: Could not find HOME environment.\n");
 		return -1;
 	}
