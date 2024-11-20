@@ -267,6 +267,7 @@ int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) 
 		char service_key[256];
 		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
 		values_list[i][0] = toupper(values_list[i][0]);
+
 		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, values_list[i], RESET);
 		replace_char(temp_value, '_', ' ');
 		if (value != NULL && cJSON_IsString(value)) {
