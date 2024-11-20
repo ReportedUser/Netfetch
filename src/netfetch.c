@@ -16,6 +16,8 @@
 #define RESET "\033[0m"
 #define SIZE 30 
 #define SERVICESQUANTITY 5
+#define MAX_URL_LENGTH 200
+#define MAX_KEY_AND_VALUE_LENGTH 400
 
 struct ServiceConfig {
 	char service[50];
@@ -91,12 +93,17 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, 0, doc };
 
 
-int organize_service_data(char line[256], struct ServiceConfig *current_service) {
-	char key[128], value[128];
+int organize_service_data(char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service) {
+	char key[MAX_KEY_AND_VALUE_LENGTH];
+	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
 
         if (sscanf(line, "%[^=]=%s", key, value) == 2) {
         if (!strcmp(key, "link")) {
-                strncpy(current_service->link, value, sizeof(current_service->link)-1);
+			if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
+				printf(RED"Error:"RESET" There is an issue with the URL.\n");
+				return -1;
+			}
+			strncpy(current_service->link, value, sizeof(current_service->link)-1);
         } else if (!strcmp(key, "value_1")) {
                 strncpy(current_service->value_1, value, sizeof(current_service->value_1)-1);
         } else if (!strcmp(key, "value_2")) {
@@ -119,7 +126,7 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 
 	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
 	int RC, i = 0;
-	char line[256];
+	char line[MAX_KEY_AND_VALUE_LENGTH];
 	FILE *file = fopen(filename, "r");
 
 	if (!file){
@@ -133,7 +140,10 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 			i ++;
 		} else {
 			RC = organize_service_data(line, current_service[i-1]);
-			if (RC == -1) return RC;
+			if (RC == -1) {
+				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
+				return RC;
+			}
 		}
 	}
 	fclose(file);
@@ -159,7 +169,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 }
 
 
-int fetch_information(char URL[200], struct MemoryStruct *chunk, int error){
+int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
 	/*
 	Curl to download the json.
 	The int error options is added to either end the program
