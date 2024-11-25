@@ -22,6 +22,7 @@
 struct ServiceConfig {
 	char service[50];
 	char link[200];
+	char values[SERVICESQUANTITY][MAX_KEY_AND_VALUE_LENGTH];
 	char value_1[SIZE];
 	char value_2[SIZE];
 	char value_3[SIZE];
@@ -93,9 +94,21 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static struct argp argp = { options, parse_opt, 0, doc };
 
 
-int organize_service_data(char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service) {
+int string_compare(const char *key, const char *key_list[], size_t list_size) {
+	for (int i = 0; i < list_size; i++) {
+		if (strcmp(key, key_list[i]) == 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+
+int organize_service_data(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service, int *value_counter) {
 	char key[MAX_KEY_AND_VALUE_LENGTH];
 	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
+	const char *keys_list[] = {"value_1", "value_2", "value_3","value_4", "value_5"};
+	size_t list_size = sizeof(keys_list) / sizeof(keys_list[0]);
 
         if (sscanf(line, "%[^=]=%s", key, value) == 2) {
         if (!strcmp(key, "link")) {
@@ -104,18 +117,9 @@ int organize_service_data(char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceCon
 				return -1;
 			}
 			strncpy(current_service->link, value, sizeof(current_service->link)-1);
-        } else if (!strcmp(key, "value_1")) {
-                strncpy(current_service->value_1, value, sizeof(current_service->value_1)-1);
-        } else if (!strcmp(key, "value_2")) {
-                strncpy(current_service->value_2, value, sizeof(current_service->value_2)-1);
-        } else if (!strcmp(key, "value_3")) {
-                strncpy(current_service->value_3, value, sizeof(current_service->value_3)-1);
-        } else if (!strcmp(key, "value_4")) {
-                strncpy(current_service->value_4, value, sizeof(current_service->value_4)-1);
-	} else if (!strcmp(key, "value_5")) {
-                strncpy(current_service->value_5, value, sizeof(current_service->value_5)-1);
-	} else if (!strcmp(key, "value_6")) {
-                strncpy(current_service->value_6, value, sizeof(current_service->value_6)-1);
+	} else if (string_compare(key, keys_list, list_size)) {
+                strncpy(current_service->values[*value_counter], value, sizeof(current_service->values[*value_counter])-1);
+		(*value_counter)++;
 	}
 	}
 	return 0;
@@ -124,8 +128,7 @@ int organize_service_data(char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceCon
 
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
 
-	struct ServiceConfig *service = malloc(sizeof(struct ServiceConfig));
-	int RC, i = 0;
+	int RC, i, value_counter = 0;
 	char line[MAX_KEY_AND_VALUE_LENGTH];
 	FILE *file = fopen(filename, "r");
 
@@ -138,8 +141,9 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 			current_service[i] = malloc(sizeof(struct ServiceConfig));
 			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
+			value_counter = 0;
 		} else {
-			RC = organize_service_data(line, current_service[i-1]);
+			RC = organize_service_data(line, current_service[i-1], &value_counter);
 			if (RC == -1) {
 				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
 				return RC;
@@ -253,22 +257,14 @@ char* replace_char(char* str, char find, char replace) {
 
 int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
 	char concatenated_values[6][256];
-	char *values_list[6] = {
-		service_to_print->value_1,
-		service_to_print->value_2,
-		service_to_print->value_3,
-		service_to_print->value_4,
-		service_to_print->value_5,
-		service_to_print->value_6,
-	};
 
 	for (int i = 0; i<5; i++) {
 		char temp_value[256];
 		char service_key[256];
-		cJSON *value = cJSON_GetObjectItem(json_to_print, values_list[i]);
-		values_list[i][0] = toupper(values_list[i][0]);
+		cJSON *value = cJSON_GetObjectItem(json_to_print, service_to_print->values[i]);
+		service_to_print->values[i][0] = toupper(service_to_print->values[i][0]);
 
-		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, values_list[i], RESET);
+		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, service_to_print->values[i], RESET);
 		replace_char(temp_value, '_', ' ');
 		if (value != NULL && cJSON_IsString(value)) {
 		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %s", temp_value, value->valuestring);
