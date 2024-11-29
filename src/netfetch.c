@@ -151,7 +151,6 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 				fclose(file);
 				return -1;
 			}
-			//current_service[i] = malloc(sizeof(struct ServiceConfig));
 			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
 			value_counter = 0;
@@ -383,6 +382,26 @@ int list_services(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
 }
 
 
+int get_config_path(char *config_path, size_t config_size) {
+	const char *home = getenv("HOME");
+	const char *path = "/.config/netfetch/netfetch-services.conf";
+
+	if (!home) {
+		fprintf(stderr, "Error: Could not find HOME environment.\n");
+		return -1;
+	}
+
+	if (strlen(home) + strlen(path) + 1 > config_size) {
+		fprintf(stderr, "Error: config_size too small.\n");
+		return -1;
+	}
+	strcpy(config_path, home);
+	strcat(config_path, path);
+
+	return 0;
+}
+
+
 int main(int argc, char **argv) {
 	struct arguments arguments;
 	arguments.showall = 0;
@@ -393,13 +412,19 @@ int main(int argc, char **argv) {
 	int RC = 0;
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
 
+	char config_path[200];
+	RC = get_config_path(config_path, sizeof(config_path));
+	if (RC == -1) return -1;
+	
+	/*
 	const char *home = getenv("HOME");
 	if (!home) {
 		fprintf(stderr, "Error: Could not find HOME environment.\n");
 		return -1;
 	}
-	char config_path[200];
 	snprintf(config_path, sizeof(config_path),"%s/.config/netfetch/netfetch-services.conf", home);
+	*/
+
 
 	RC = parse_config(ServiceArray, config_path);
 	if (RC == -1) {
