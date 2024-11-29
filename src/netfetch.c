@@ -27,7 +27,6 @@ struct ServiceConfig {
 	size_t values_count;
 };
 
-
 struct MemoryStruct {
 	char *memory;
 	size_t size;
@@ -134,6 +133,49 @@ int retrieve_service_key(const char line[MAX_KEY_AND_VALUE_LENGTH], struct Servi
 }
 
 
+int allocate_service_key(struct ServiceConfig *current_service, char *value) {
+	char **new_values = realloc(current_service->values_list, (current_service->values_count +1) * sizeof(char *));
+
+	if (new_values == NULL) {
+		perror("Failed to allocate memory\n");
+		return -1;
+	}
+	current_service->values_list = new_values;
+	current_service->values_list[current_service->values_count] = malloc((strlen(value) + 1) * sizeof(char));
+	if (current_service->values_list[current_service->values_count] == NULL) {
+		perror("Failed to allocate memory\n");
+		return -1;
+	}
+	strcpy(current_service->values_list[current_service->values_count], value);
+			printf("Added %s to position %zu\n", current_service->values_list[current_service->values_count], current_service->values_count);
+	current_service->values_count++;
+	return 0;
+}
+
+
+int read_service_key(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service) {
+	char key[MAX_KEY_AND_VALUE_LENGTH];
+	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
+	int RC = 0;
+
+	if (sscanf(line, "%[^=]=%s", key, value) == 2) {
+        if (!strcmp(key, "link")) {
+			printf("Getting the link now\n");
+			/*
+			if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
+				printf(RED"Error:"RESET" There is an issue with the URL.\n");
+				return -1;
+			} else
+				strncpy(current_service->link, value, sizeof(current_service->link)-1);
+	*/} else if (!strcmp(key, "value")) {
+			RC = allocate_service_key(current_service, value);
+			if (RC == -1) return -1;
+		}
+	}
+	return 0;
+}
+
+
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
 
 	int RC = 0, i = 0, value_counter = 0;
@@ -156,6 +198,7 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 			value_counter = 0;
 		} else {
 			RC = retrieve_service_key(line, current_service[i-1], &value_counter);
+			read_service_key(line, current_service[i-1]);
 			if (RC == -1) {
 				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
 				return RC;
@@ -416,16 +459,6 @@ int main(int argc, char **argv) {
 	RC = get_config_path(config_path, sizeof(config_path));
 	if (RC == -1) return -1;
 	
-	/*
-	const char *home = getenv("HOME");
-	if (!home) {
-		fprintf(stderr, "Error: Could not find HOME environment.\n");
-		return -1;
-	}
-	snprintf(config_path, sizeof(config_path),"%s/.config/netfetch/netfetch-services.conf", home);
-	*/
-
-
 	RC = parse_config(ServiceArray, config_path);
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
