@@ -23,12 +23,6 @@ struct ServiceConfig {
 	char service[50];
 	char link[200];
 	char values[SERVICESQUANTITY][MAX_KEY_AND_VALUE_LENGTH];
-	char value_1[SIZE];
-	char value_2[SIZE];
-	char value_3[SIZE];
-	char value_4[SIZE];
-	char value_5[SIZE];
-	char value_6[SIZE];
 };
 
 
