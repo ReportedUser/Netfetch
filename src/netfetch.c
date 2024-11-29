@@ -23,6 +23,8 @@ struct ServiceConfig {
 	char service[50];
 	char link[200];
 	char values[SERVICESQUANTITY][MAX_KEY_AND_VALUE_LENGTH];
+	char **values_list;
+	size_t values_count;
 };
 
 
@@ -98,7 +100,19 @@ int string_compare(const char *key, const char *key_list[], size_t list_size) {
 }
 
 
-int organize_service_data(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service, int *value_counter) {
+int initialize_service(struct ServiceConfig **service) {
+	*service = malloc(sizeof(struct ServiceConfig));
+	if (*service == NULL) {
+		fprintf(stderr, "Error: unable to allocate memory\n”");
+		return -1;
+	}
+	(*service)->values_list = NULL;
+	(*service)->values_count = 0;
+	return 1;
+}
+
+
+int retrieve_service_key(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service, int *value_counter) {
 	char key[MAX_KEY_AND_VALUE_LENGTH];
 	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
 	const char *keys_list[] = {"value_1", "value_2", "value_3","value_4", "value_5"};
@@ -109,8 +123,8 @@ int organize_service_data(const char line[MAX_KEY_AND_VALUE_LENGTH], struct Serv
 			if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
 				printf(RED"Error:"RESET" There is an issue with the URL.\n");
 				return -1;
-			}
-			strncpy(current_service->link, value, sizeof(current_service->link)-1);
+			} else
+				strncpy(current_service->link, value, sizeof(current_service->link)-1);
 	} else if (string_compare(key, keys_list, list_size)) {
                 strncpy(current_service->values[*value_counter], value, sizeof(current_service->values[*value_counter])-1);
 		(*value_counter)++;
@@ -122,7 +136,7 @@ int organize_service_data(const char line[MAX_KEY_AND_VALUE_LENGTH], struct Serv
 
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
 
-	int RC, i, value_counter = 0;
+	int RC = 0, i = 0, value_counter = 0;
 	char line[MAX_KEY_AND_VALUE_LENGTH];
 	FILE *file = fopen(filename, "r");
 
@@ -130,14 +144,19 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 		perror(RED"Error opening the configuration file: make sure it exists.\n"RESET);
 		return -1;
 	}
-	while (fgets(line, sizeof(line), file)){
+	while (fgets(line, sizeof(line), file)) {
 		if (line[0] == '[') {
-			current_service[i] = malloc(sizeof(struct ServiceConfig));
+			RC = initialize_service(&current_service[i]);
+			if (RC == -1) {
+				fclose(file);
+				return -1;
+			}
+			//current_service[i] = malloc(sizeof(struct ServiceConfig));
 			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
 			value_counter = 0;
 		} else {
-			RC = organize_service_data(line, current_service[i-1], &value_counter);
+			RC = retrieve_service_key(line, current_service[i-1], &value_counter);
 			if (RC == -1) {
 				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
 				return RC;
@@ -373,7 +392,6 @@ int main(int argc, char **argv) {
 	
 	int RC = 0;
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
-	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
 	const char *home = getenv("HOME");
 	if (!home) {
