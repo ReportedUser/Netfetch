@@ -22,15 +22,10 @@
 struct ServiceConfig {
 	char service[50];
 	char link[200];
-	char values[SERVICESQUANTITY][MAX_KEY_AND_VALUE_LENGTH];
-	char value_1[SIZE];
-	char value_2[SIZE];
-	char value_3[SIZE];
-	char value_4[SIZE];
-	char value_5[SIZE];
-	char value_6[SIZE];
+	char **values;
+	char **key_value_pair;
+	size_t values_count;
 };
-
 
 struct MemoryStruct {
 	char *memory;
@@ -45,7 +40,7 @@ typedef struct {
 
 
 const char *argp_program_version =
-  "Netfetch version 0.4";
+  "Netfetch version 0.4.1";
 
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
@@ -104,31 +99,67 @@ int string_compare(const char *key, const char *key_list[], size_t list_size) {
 }
 
 
-int organize_service_data(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service, int *value_counter) {
+int initialize_service(struct ServiceConfig **service) {
+	*service = malloc(sizeof(struct ServiceConfig));
+	if (*service == NULL) {
+		fprintf(stderr, "Error: unable to allocate memory\n”");
+		return -1;
+	}
+	(*service)->values = NULL;
+	(*service)->values_count = 0;
+	return 1;
+}
+
+int allocate_service_link(struct ServiceConfig *current_service, char *value) {
+	if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
+		printf(RED"Error:"RESET" There is an issue with the URL.\n");
+		return -1;
+	} else
+		strncpy(current_service->link, value, sizeof(current_service->link)-1);
+	return 0;
+}
+
+
+int allocate_service_key(struct ServiceConfig *current_service, char *value) {
+	char **new_values = realloc(current_service->values, (current_service->values_count +1) * sizeof(char *));
+
+	if (new_values == NULL) {
+		perror("Failed to allocate memory\n");
+		return -1;
+	}
+	current_service->values = new_values;
+	current_service->values[current_service->values_count] = malloc((strlen(value) + 1) * sizeof(char));
+	if (current_service->values[current_service->values_count] == NULL) {
+		perror("Failed to allocate memory\n");
+		return -1;
+	}
+	strcpy(current_service->values[current_service->values_count], value);
+	current_service->values_count++;
+	return 0;
+}
+
+
+int read_service_key(const char line[MAX_KEY_AND_VALUE_LENGTH], struct ServiceConfig *current_service) {
 	char key[MAX_KEY_AND_VALUE_LENGTH];
 	char *value = malloc(MAX_KEY_AND_VALUE_LENGTH);
-	const char *keys_list[] = {"value_1", "value_2", "value_3","value_4", "value_5"};
-	size_t list_size = sizeof(keys_list) / sizeof(keys_list[0]);
+	int RC = 0;
 
-        if (sscanf(line, "%[^=]=%s", key, value) == 2) {
+	if (sscanf(line, "%[^=]=%s", key, value) == 2) {
         if (!strcmp(key, "link")) {
-			if (strlen(value) > MAX_URL_LENGTH || value == NULL) {
-				printf(RED"Error:"RESET" There is an issue with the URL.\n");
-				return -1;
-			}
-			strncpy(current_service->link, value, sizeof(current_service->link)-1);
-	} else if (string_compare(key, keys_list, list_size)) {
-                strncpy(current_service->values[*value_counter], value, sizeof(current_service->values[*value_counter])-1);
-		(*value_counter)++;
+		RC = allocate_service_link(current_service, value);
+		if (RC == -1) return -1;
+	} else if (!strcmp(key, "value") && current_service->values_count < 17) {
+		RC = allocate_service_key(current_service, value);
+		if (RC == -1) return RC;
+		}
 	}
-	}
-	return 0;
+	return RC;
 }
 
 
 int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const char *filename) {
 
-	int RC, i, value_counter = 0;
+	int RC = 0, i = 0, value_counter = 0;
 	char line[MAX_KEY_AND_VALUE_LENGTH];
 	FILE *file = fopen(filename, "r");
 
@@ -136,15 +167,20 @@ int parse_config(struct ServiceConfig *current_service[SERVICESQUANTITY], const 
 		perror(RED"Error opening the configuration file: make sure it exists.\n"RESET);
 		return -1;
 	}
-	while (fgets(line, sizeof(line), file)){
+	while (fgets(line, sizeof(line), file)) {
 		if (line[0] == '[') {
-			current_service[i] = malloc(sizeof(struct ServiceConfig));
+			RC = initialize_service(&current_service[i]);
+			if (RC == -1) {
+				fclose(file);
+				return -1;
+			}
 			sscanf(line, "[%[^]]", current_service[i]->service);
 			i ++;
 			value_counter = 0;
 		} else {
-			RC = organize_service_data(line, current_service[i-1], &value_counter);
+			RC = read_service_key(line, current_service[i-1]);
 			if (RC == -1) {
+				fclose(file);
 				printf(RED"Error:"RESET" The issue is caused by the %s service.\n", current_service[i-1]->service);
 				return RC;
 			}
@@ -255,28 +291,73 @@ char* replace_char(char* str, char find, char replace) {
 }
 
 
-int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
-	char concatenated_values[6][256];
+int concat_key_value_pair(struct ServiceConfig *Service, cJSON *json_information) {
+	/* 
+	This function uses the retrieved keys from the configuration file to loook for the value inside the json.
+	Once it is found, the key gets the transformed to something more presentable and then concatenated with the value.
+	
+	Returns 0 on success or -1 on error.
+	*/
+	int RC = 0;
+	char temp_value[256];
+	Service->key_value_pair = malloc(Service->values_count * sizeof(char *));
+	if (Service->key_value_pair == NULL) {
+		perror("Couldn't allocate memory for key_value_pair \n");
+		return -1;
+	}
 
-	for (int i = 0; i<5; i++) {
-		char temp_value[256];
-		char service_key[256];
-		cJSON *value = cJSON_GetObjectItem(json_to_print, service_to_print->values[i]);
-		service_to_print->values[i][0] = toupper(service_to_print->values[i][0]);
+	for (int i = 0; i < Service->values_count; i++) {
+		
+		cJSON *value = cJSON_GetObjectItem(json_information, Service->values[i]);
+		if (value == NULL) {
+			printf("The key %i does not exist.\n", i);
+			return -1;
+		}
 
-		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, service_to_print->values[i], RESET);
+		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, Service->values[i], RESET);
+		temp_value[0] = toupper(temp_value[0]);
 		replace_char(temp_value, '_', ' ');
+
+		size_t value_length = (value != NULL && cJSON_IsString(value)) ? strlen(value->valuestring) : 12;
+		size_t allocation_size = strlen(temp_value) + strlen(": ") + value_length + 1;
+		Service->key_value_pair[i] = malloc(allocation_size);
+		if (Service->key_value_pair[i] == NULL) {
+			perror("Couldn't allocate memory for key_value_pair \n");
+			return -1;
+		}
+
 		if (value != NULL && cJSON_IsString(value)) {
-		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %s", temp_value, value->valuestring);
+			snprintf(Service->key_value_pair[i], allocation_size, "%s: %s", temp_value, value->valuestring);
 		} else if (value != NULL && cJSON_IsNumber(value)) {
-		snprintf(concatenated_values[i], sizeof(concatenated_values[i]), "%s: %d", temp_value, value->valueint);
+			snprintf(Service->key_value_pair[i], allocation_size, "%s: %d", temp_value, value->valueint);
 		}
 	}
+
+	for (int i = Service->values_count; i <= 17; i++) {
+		Service->key_value_pair[i] = malloc(strlen(" "));
+		Service->key_value_pair[i] = " ";
+	}
+
+	return 0;
+}
+
+
+int service_print(struct ServiceConfig *service_to_print, cJSON *json_to_print) {
+	int RC = 0;
+	char concatenated_values[6][256];
+
+	RC = concat_key_value_pair(service_to_print, json_to_print);
+	if (RC == -1) return -1;
+
 	const char *logo = search_logo(service_to_print->service);
 	if (!logo) {perror("Can't find the specified logo. Make sure a logo exists for the choosen service."); return -1;}
-	printf(logo, service_to_print->service, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3],
-	concatenated_values[4]);
-	return 0;
+	printf(logo, service_to_print->service,
+	service_to_print->key_value_pair[0], service_to_print->key_value_pair[1], service_to_print->key_value_pair[2], service_to_print->key_value_pair[3],
+	service_to_print->key_value_pair[4], service_to_print->key_value_pair[5], service_to_print->key_value_pair[6], service_to_print->key_value_pair[7],
+	service_to_print->key_value_pair[8], service_to_print->key_value_pair[9], service_to_print->key_value_pair[10], service_to_print->key_value_pair[11],
+	service_to_print->key_value_pair[11], service_to_print->key_value_pair[12], service_to_print->key_value_pair[13], service_to_print->key_value_pair[14],
+	service_to_print->key_value_pair[15], service_to_print->key_value_pair[16], service_to_print->key_value_pair[17]);
+	return RC;
 }
 
 
@@ -370,6 +451,26 @@ int list_services(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
 }
 
 
+int get_config_path(char *config_path, size_t config_size) {
+	const char *home = getenv("HOME");
+	const char *path = "/.config/netfetch/netfetch-services.conf";
+
+	if (!home) {
+		fprintf(stderr, "Error: Could not find HOME environment.\n");
+		return -1;
+	}
+
+	if (strlen(home) + strlen(path) + 1 > config_size) {
+		fprintf(stderr, "Error: config_size too small.\n");
+		return -1;
+	}
+	strcpy(config_path, home);
+	strcat(config_path, path);
+
+	return 0;
+}
+
+
 int main(int argc, char **argv) {
 	struct arguments arguments;
 	arguments.showall = 0;
@@ -379,16 +480,11 @@ int main(int argc, char **argv) {
 	
 	int RC = 0;
 	struct ServiceConfig* ServiceArray[SERVICESQUANTITY];
-	memset(&ServiceArray, 0, sizeof(ServiceArray));
 
-	const char *home = getenv("HOME");
-	if (!home) {
-		fprintf(stderr, "Error: Could not find HOME environment.\n");
-		return -1;
-	}
 	char config_path[200];
-	snprintf(config_path, sizeof(config_path),"%s/.config/netfetch/netfetch-services.conf", home);
-
+	RC = get_config_path(config_path, sizeof(config_path));
+	if (RC == -1) return -1;
+	
 	RC = parse_config(ServiceArray, config_path);
 	if (RC == -1) {
 		printf(RED"An error ocurred when trying to read the config file. Make sure it exists and it's properly configured.\n"RESET);
