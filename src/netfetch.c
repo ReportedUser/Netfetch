@@ -25,6 +25,7 @@ struct ServiceConfig {
 	char **values;
 	char **key_value_pair;
 	size_t values_count;
+	int available;
 };
 
 struct MemoryStruct {
@@ -369,7 +370,7 @@ const char* add_status_color(int status){
 }
 
 
-int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availability[SERVICESQUANTITY]) {
+int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY]) {
 	int RC = 0;
 	char concatenated_values[6][50];
 	memset(concatenated_values, 0, sizeof(concatenated_values));
@@ -378,7 +379,7 @@ int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availa
 		if (!ServerList[i]) {
 			break;
 		}
-		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(availability[i]), ServerList[i]->service);
+		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
 	}
 	printf(show_general, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3], concatenated_values[4]);
 	return RC;
@@ -388,7 +389,6 @@ int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availa
 int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *status) {
 	int RC = 0;
 	struct MemoryStruct chunk;
-	int availableServices[SERVICESQUANTITY] = {0};
 
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
 		if (!ServiceList[i]) break;
@@ -397,9 +397,9 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *stat
 		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
 		if (RC == -1) {
 			continue;
-			availableServices[i] = 0;
+			ServiceList[i]->available = 0;
 		} else {
-			availableServices[i] = 1;
+			ServiceList[i]->available = 1;
 		}
 	}
 	if (status == NULL) {
@@ -412,7 +412,7 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *stat
 		return -1;
 	}
 
-	RC = general_print(ServiceList, availableServices);
+	RC = general_print(ServiceList);
 	return RC;
 }
 
