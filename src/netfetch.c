@@ -41,7 +41,7 @@ typedef struct {
 
 
 const char *argp_program_version =
-  "Netfetch version 0.4.1";
+  "Netfetch version 0.4.2";
 
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
@@ -370,7 +370,7 @@ const char* add_status_color(int status){
 }
 
 
-int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY]) {
+int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int *status_code) {
 	int RC = 0;
 	char concatenated_values[6][50];
 	memset(concatenated_values, 0, sizeof(concatenated_values));
@@ -379,15 +379,39 @@ int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY]) {
 		if (!ServerList[i]) {
 			break;
 		}
-		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		if (*status_code == 1 && ServerList[i]->available == 1) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		} else if (*status_code == 0 && ServerList[i]->available == 0) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		} else if (*status_code == 2) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		}
+
+
 	}
 	printf(show_general, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3], concatenated_values[4]);
 	return RC;
 }
 
 
+int check_status(char *status, int *value) {
+
+	if (status == NULL) {
+	} else if (!strcmp(status, "on")) {
+		*value = 1;
+	} else if (!strcmp(status, "off")) {
+		*value = 0;
+	} else if (status != NULL) {
+		perror("You can only choose between on, off or leave it empty to show all.\n");
+		return -1;
+	}
+
+	return *value;
+}
+
 int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *status) {
 	int RC = 0;
+	int value = 2;
 	struct MemoryStruct chunk;
 
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
@@ -402,17 +426,9 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *stat
 			ServiceList[i]->available = 1;
 		}
 	}
-	if (status == NULL) {
-	} else if (!strcmp(status, "on")) {
-		printf("Status is on\n");
-	} else if (!strcmp(status, "off")) {
-		printf("Status is off\n");
-	} else if (status != NULL) {
-		perror("You can only choose between on, off or leave it empty to show all.\n");
-		return -1;
-	}
+	value = check_status(status, &value);
 
-	RC = general_print(ServiceList);
+	RC = general_print(ServiceList, &value);
 	return RC;
 }
 
