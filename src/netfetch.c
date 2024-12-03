@@ -47,7 +47,7 @@ const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
 
 static struct argp_option options[] = {
-	{"show-all", 'a', "status", OPTION_ARG_OPTIONAL, " Display information for all monitored services."},
+	{"show-all", 'a', "status", OPTION_ARG_OPTIONAL, "Display information for all monitored services. You have the choice to use on or off to display only online or offline services, or leave it empty to display all services."},
 	{"display", 'd', "service", 0, "Show detailed information for a specific service."},
 	{"list", 'l', 0, 0, "List all services defined in the configuration."},
 	{ 0 }
