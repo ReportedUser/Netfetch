@@ -25,6 +25,7 @@ struct ServiceConfig {
 	char **values;
 	char **key_value_pair;
 	size_t values_count;
+	int available;
 };
 
 struct MemoryStruct {
@@ -40,13 +41,13 @@ typedef struct {
 
 
 const char *argp_program_version =
-  "Netfetch version 0.4.1";
+  "Netfetch version 0.4.2";
 
 const char *argp_program_bug_address =
   "<pleasefirsttry@gmail.com>";
 
 static struct argp_option options[] = {
-	{"show-all", 'a', 0, 0, " Display information for all monitored services."},
+	{"show-all", 'a', "status", OPTION_ARG_OPTIONAL, "Display information for all monitored services. You have the choice to use on or off to display only online or offline services, or leave it empty to display all services."},
 	{"display", 'd', "service", 0, "Show detailed information for a specific service."},
 	{"list", 'l', 0, 0, "List all services defined in the configuration."},
 	{ 0 }
@@ -57,6 +58,7 @@ static char doc[] =
 
 struct arguments {
 	char *service;
+	char *status;
 	int showall;
 	int list;
 };
@@ -69,6 +71,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 		{
 		case 'a':
 			arguments->showall = 1;
+			arguments->status = arg;
 			break;
 		case 'l':
 			arguments->list= 1;
@@ -367,7 +370,7 @@ const char* add_status_color(int status){
 }
 
 
-int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availability[SERVICESQUANTITY]) {
+int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int *status_code) {
 	int RC = 0;
 	char concatenated_values[6][50];
 	memset(concatenated_values, 0, sizeof(concatenated_values));
@@ -376,17 +379,40 @@ int general_print(struct ServiceConfig* ServerList[SERVICESQUANTITY], int availa
 		if (!ServerList[i]) {
 			break;
 		}
-		snprintf(concatenated_values[i], 50, "%s %s", add_status_color(availability[i]), ServerList[i]->service);
+		if (*status_code == 1 && ServerList[i]->available == 1) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		} else if (*status_code == 0 && ServerList[i]->available == 0) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		} else if (*status_code == 2) {
+			snprintf(concatenated_values[i], 50, "%s %s", add_status_color(ServerList[i]->available), ServerList[i]->service);
+		}
+
+
 	}
 	printf(show_general, concatenated_values[0], concatenated_values[1], concatenated_values[2], concatenated_values[3], concatenated_values[4]);
 	return RC;
 }
 
 
-int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
+int check_status(char *status, int *value) {
+
+	if (status == NULL) {
+	} else if (!strcmp(status, "on")) {
+		*value = 1;
+	} else if (!strcmp(status, "off")) {
+		*value = 0;
+	} else if (status != NULL) {
+		perror("You can only choose between on, off or leave it empty to show all.\n");
+		return -1;
+	}
+
+	return *value;
+}
+
+int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *status) {
 	int RC = 0;
+	int value = 2;
 	struct MemoryStruct chunk;
-	int availableServices[SERVICESQUANTITY] = {0};
 
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
 		if (!ServiceList[i]) break;
@@ -395,12 +421,14 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY]) {
 		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
 		if (RC == -1) {
 			continue;
-			availableServices[i] = 0;
+			ServiceList[i]->available = 0;
 		} else {
-			availableServices[i] = 1;
+			ServiceList[i]->available = 1;
 		}
 	}
-	RC = general_print(ServiceList, availableServices);
+	value = check_status(status, &value);
+
+	RC = general_print(ServiceList, &value);
 	return RC;
 }
 
@@ -475,6 +503,7 @@ int main(int argc, char **argv) {
 	struct arguments arguments;
 	arguments.showall = 0;
 	arguments.list = 0;
+	arguments.status = NULL;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 	
@@ -495,8 +524,8 @@ int main(int argc, char **argv) {
 	} else if (arguments.service != NULL) {
 		RC = find_service(ServiceArray, arguments);
 		if (RC == -1) return RC;
-	} else if (arguments.showall == 1 || (!arguments.list && !arguments.showall && !arguments.service)) {
-		RC = general_view(ServiceArray);
+	} else if ((arguments.showall == 1) || (arguments.showall == 1 && arguments.status != NULL) || (!arguments.list && !arguments.showall && !arguments.service)) {
+		RC = general_view(ServiceArray, arguments.status);
 	}
 	return RC;
 }
