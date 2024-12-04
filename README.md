@@ -29,21 +29,21 @@ To get started, you'll need to configure the netfetch-services.conf created insi
 ```
 [service-name]
 link=linkwheretheAPIis
-value_1= ...
-value_2= ...
+value= ...
+value= ...
 ...
-value_6= ...
+value= ...
 ```
 
-Where value_X=... represents key-value pairs. Here’s an example configuration for the Pi-hole API service:
+Where value=... represents key-value pairs, You can add up to 18. Here’s an example configuration for the Pi-hole API service:
 
 ```
 [pi-hole] #This is the name used to find the logo.
 link=http://198.186.10.34/admin/api.php?summaryRaw&auth=34jhdasfl435adfs2a324sdaf  #The API key is added to the link, this will be changed in the future.
-value_1=status
-value_2=dns_queries_today
-value_3=ads_blocked_today
-value_4=ads_percentage_today
+value=status
+value=dns_queries_today
+value=ads_blocked_today
+value=ads_percentage_today
 ```
 
 Please note, while many services are supported, I may not use all of them, so this list might not be fully comprehensive. If there’s a service you think should be included by default, feel free to suggest it, and I’ll add it to the list.
