@@ -318,7 +318,7 @@ int concat_key_value_pair(struct ServiceConfig *Service, cJSON *json_information
 		}
 
 		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, Service->values[i], RESET);
-		temp_value[0] = toupper(temp_value[0]);
+		temp_value[4] = toupper(temp_value[4]);
 		replace_char(temp_value, '_', ' ');
 
 		size_t value_length = (value != NULL && cJSON_IsString(value)) ? strlen(value->valuestring) : 12;
