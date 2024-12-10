@@ -212,12 +212,14 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 }
 
 
-int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
+int fetch_information(char *URL, struct MemoryStruct *chunk, int check_only){
 	/*
 	Curl to download the json.
 	The int error options is added to either end the program
 	with the error code or just check if the service is up.
 	*/
+
+	int RC = 0;
 
 	CURL *curl;
 	CURLcode res;
@@ -226,21 +228,29 @@ int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
 	curl = curl_easy_init();
 	if(curl) {
 		curl_easy_setopt(curl, CURLOPT_URL, URL);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
-		// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		if (check_only == 0) {
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
+		} else if (check_only == 1) {
+			curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
+			curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 500L);
+		}
 		res = curl_easy_perform(curl);
-        if(res != CURLE_OK && error == 1) {
+	} else {
+		fprintf(stderr, RED"Problem initializing curl_easy_init()\n");
+		return -1;
+	}
+
+	if (res != CURLE_OK && check_only == 0) {
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
-		return -1;
+		RC = -1;
+	} else if (res != CURLE_OK && check_only == 1) {
+		RC = -1;
 	}
-        if(res != CURLE_OK && !error) {
-		return -1;
-	}
-  curl_easy_cleanup(curl);
-	}
+
+	curl_easy_cleanup(curl);
 	curl_global_cleanup();
-	return 1;
+	return RC;
 }
 
 
@@ -318,7 +328,7 @@ int concat_key_value_pair(struct ServiceConfig *Service, cJSON *json_information
 		}
 
 		snprintf(temp_value, sizeof(temp_value), "%s%s%s",BOLD, Service->values[i], RESET);
-		temp_value[0] = toupper(temp_value[0]);
+		temp_value[4] = toupper(temp_value[4]);
 		replace_char(temp_value, '_', ' ');
 
 		size_t value_length = (value != NULL && cJSON_IsString(value)) ? strlen(value->valuestring) : 12;
@@ -418,10 +428,10 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *stat
 		if (!ServiceList[i]) break;
 		chunk.memory = malloc(1);
 		chunk.size = 0;
-		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
+		RC = fetch_information(ServiceList[i]->link, &chunk, 1);
 		if (RC == -1) {
-			continue;
 			ServiceList[i]->available = 0;
+			continue;
 		} else {
 			ServiceList[i]->available = 1;
 		}
@@ -443,7 +453,7 @@ int find_service(struct ServiceConfig* ServiceList[SERVICESQUANTITY], struct arg
 	for (int i = 0; i < SERVICESQUANTITY; i++) {
 		if (!ServiceList[i]) break;
 		else if (!strcmp(ServiceList[i]->service, arguments.service)) {
-			RC = fetch_information(ServiceList[i]->link, &chunk, 1);
+			RC = fetch_information(ServiceList[i]->link, &chunk, 0);
 			if (RC == -1) {
 				perror(RED"Error: Unable to fetch information. Please check your network connection and verify that the link is correct.\n"RESET);
 				return RC;
