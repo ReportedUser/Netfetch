@@ -212,7 +212,7 @@ size_t WriteMemoryCallback(char *content, size_t size, size_t nmemb, void *userd
 }
 
 
-int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
+int fetch_information(char *URL, struct MemoryStruct *chunk, int check_only){
 	/*
 	Curl to download the json.
 	The int error options is added to either end the program
@@ -230,11 +230,11 @@ int fetch_information(char *URL, struct MemoryStruct *chunk, int error){
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)chunk);
 		// curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		res = curl_easy_perform(curl);
-        if(res != CURLE_OK && error == 1) {
+        if(res != CURLE_OK && check_only == 1) {
 		fprintf(stderr, RED"curl_easy_perform() returned %s\n"RESET, curl_easy_strerror(res));
 		return -1;
 	}
-        if(res != CURLE_OK && !error) {
+        if(res != CURLE_OK && !check_only) {
 		return -1;
 	}
   curl_easy_cleanup(curl);
@@ -420,8 +420,8 @@ int general_view(struct ServiceConfig* ServiceList[SERVICESQUANTITY], char *stat
 		chunk.size = 0;
 		RC = fetch_information(ServiceList[i]->link, &chunk, 0);
 		if (RC == -1) {
-			continue;
 			ServiceList[i]->available = 0;
+			continue;
 		} else {
 			ServiceList[i]->available = 1;
 		}
